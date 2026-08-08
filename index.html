@@ -252,30 +252,32 @@ function submitForm(){
   window.location.href=url;
 }
 
-// Auto-redirect: if ?orderid= is in URL, go straight to delivery
+// Auto-redirect logic
 (function(){
   const params=new URLSearchParams(window.location.search);
   const orderid=params.get('orderid');
-  if(orderid){
-    // Auto-deliver: redirect to delivery.html with orderid (email optional)
+  if(!orderid) return;
+
+  // Check if orderid is a numeric Order ID (auto-deliver) or UUID from GGSEL (show form)
+  const isNumeric=/^\d+$/.test(orderid);
+
+  if(isNumeric){
+    // Real Order ID → auto-redirect to delivery
     const email=params.get('email')||'';
     let url=`/delivery.html?orderid=${encodeURIComponent(orderid)}`;
     if(email) url+=`&email=${encodeURIComponent(email)}`;
     window.location.replace(url);
     return;
   }
-  // If ?uniquecode= from GGSEL "By link", show form (buyer needs to enter Order ID)
-  const uc=params.get('uniquecode');
-  if(uc){
-    // Show a hint to the buyer
-    const hint=document.createElement('div');
-    hint.style.cssText='text-align:center;color:#7DD3FC;font-size:13px;margin-bottom:12px;font-weight:600;';
-    hint.innerHTML=lang==='ru'
-      ? '🔗 Введите номер заказа с GGSEL для получения аккаунта'
-      : '🔗 Enter your GGSEL Order ID to receive your account';
-    const form=document.getElementById('state-form');
-    if(form&&form.firstChild) form.insertBefore(hint,form.firstChild);
-  }
+
+  // UUID from GGSEL "By link" → show form with hint
+  const hint=document.createElement('div');
+  hint.style.cssText='text-align:center;color:#7DD3FC;font-size:13px;margin-bottom:12px;font-weight:600;';
+  hint.innerHTML=lang==='ru'
+    ? '🔗 Введите номер заказа с GGSEL для получения аккаунта'
+    : '🔗 Enter your GGSEL Order Number to receive your account';
+  const form=document.getElementById('state-form');
+  if(form&&form.firstChild) form.insertBefore(hint,form.firstChild);
 })();
 </script>
 </body>
