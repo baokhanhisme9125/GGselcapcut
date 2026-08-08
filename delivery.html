@@ -189,9 +189,7 @@ body::before{content:'';position:fixed;inset:0;background:
     <div style="font-size:20px;font-weight:800;margin-bottom:8px" data-i18n="errTitle">Verification Failed</div>
     <div id="err-msg" style="font-size:14px;color:var(--muted);margin-bottom:24px"></div>
     <a href="/" class="check-another">← <span data-i18n="backHome">Back to Home</span></a>
-    <div style="margin-top:20px;font-size:12px;color:rgba(197,197,232,.4)">
-      Wrong order? <a id="err-contact-link" href="#" target="_blank" style="color:rgba(197,197,232,.5);text-decoration:underline;text-underline-offset:3px;transition:.2s" onmouseover="this.style.color='#C5C5E8'" onmouseout="this.style.color='rgba(197,197,232,.5)'">contact here</a>
-    </div>
+
   </div>
 
   <!-- Out of Stock -->
@@ -200,14 +198,8 @@ body::before{content:'';position:fixed;inset:0;background:
     <div style="font-size:20px;font-weight:800;margin-bottom:8px;color:var(--amber)" id="oos-title">Temporarily Out of Stock</div>
     <div style="font-size:13.5px;color:var(--muted);margin-bottom:8px" id="oos-product"></div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:28px;max-width:360px;margin-left:auto;margin-right:auto;line-height:1.6">
-      We’re restocking as fast as possible.<br>Click below to contact the seller directly — we’ll resolve your order ASAP.
+      We’re restocking as fast as possible. Please wait and try again later.
     </div>
-    <a id="oos-contact-link" href="#" target="_blank"
-       style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#FFB74D,#F57C00);border:none;border-radius:13px;color:#000;padding:13px 26px;font-size:14px;font-weight:800;text-decoration:none;cursor:pointer;box-shadow:0 4px 20px rgba(255,183,77,.4);transition:all .2s"
-       onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 28px rgba(255,183,77,.55)'"
-       onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 20px rgba(255,183,77,.4)'">
-      💬 Contact Seller &amp; Resolve Order
-    </a>
     <div style="margin-top:18px">
       <a href="/" style="font-size:13px;color:var(--muted);text-decoration:none">← Back to Home</a>
     </div>
@@ -496,7 +488,7 @@ async function load(){
   const orderId=params.get('orderid');
   const email=params.get('email');
   if(!orderId||!email){window.location='/';return;}
-  (function(){const _t=['htt','ps:/','/',['t','.',['m','e'].join('')].join(''),'/','D','o','n','k','9','1','2','5'].join('');document.getElementById('err-contact-link').href=_t;})();
+
   show('state-loading');
   try{
     const url=`/api/verify?orderid=${encodeURIComponent(orderId)}&email=${encodeURIComponent(email)}`;
@@ -505,7 +497,6 @@ async function load(){
     if(!data.success){
       if(data.outOfStock){
         document.getElementById('oos-product').textContent = data.productName || '';
-        document.getElementById('oos-contact-link').href = 'https://ggsel.net/catalog/product/5065211';
         show('state-oos'); return;
       }
       document.getElementById('err-msg').textContent=data.error||'Unknown error';
@@ -523,8 +514,7 @@ async function load(){
     badge.dataset.type=pt;
     badge.textContent=meta.en;
     document.getElementById('verified-label').textContent=S[lang][data.alreadyDelivered?'alreadyDelivered':'verified'];
-    const _p=['htt','ps:/','/',['t','.',['m','e'].join('')].join(''),'/','D','o','n','k','9','1','2','5'].join('');
-    document.getElementById('contact-link').href = _p;
+
     document.getElementById('order-link').href = 'https://ggsel.net/catalog/product/5065211';
     document.getElementById('order-link-box').style.display = 'block';
     show('state-result');
