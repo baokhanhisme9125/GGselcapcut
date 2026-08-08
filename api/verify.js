@@ -115,6 +115,9 @@ module.exports = async (req, res) => {
       '5065211': { sheetName: 'CapCut Pro 1 Tháng', productType: '1m', productName: 'CapCut Pro 1 Month (GGSEL)' },
     };
 
+    // Debug: log what GGSEL API returns for product detection
+    console.log(`[ggsel] Order ${orderId} → productId: "${orderInfo.productId}", productName: "${orderInfo.productName}", raw keys: ${Object.keys(orderInfo.raw || {}).join(',')}`);
+
     // Detect by product ID first, then by name keywords, default to 1m
     let product = PRODUCTS[orderInfo.productId];
     if (!product) {
