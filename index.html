@@ -243,36 +243,11 @@ function launchConfetti(){
   let f=0;function draw(){ctx.clearRect(0,0,c.width,c.height);ps.forEach(p=>{ctx.globalAlpha=p.op;ctx.fillStyle=p.col;ctx.beginPath();ctx.ellipse(p.x,p.y,p.r,p.r*.5,p.t,0,Math.PI*2);ctx.fill();p.y+=p.d;p.t+=p.ta;p.x+=Math.sin(f*.05+p.t)*.8;if(p.y>c.height)p.op-=.02;});ctx.globalAlpha=1;if(ps.some(p=>p.op>0)&&f<250){f++;requestAnimationFrame(draw);}else ctx.clearRect(0,0,c.width,c.height);}draw();
 }
 
-let _submitted=false;
-async function submitForm(){
-  if(_submitted)return;
+function submitForm(){
   const orderId=document.getElementById('inp-orderid').value.trim();
   const email=document.getElementById('inp-email').value.trim();
   if(!orderId||!email){alert(S[lang].errEmpty);return;}
-  _submitted=true;
-  document.getElementById('submit-btn').disabled=true;
-  show('state-loading');
-  try{
-    const res=await fetch(`/api/verify?orderid=${encodeURIComponent(orderId)}&email=${encodeURIComponent(email)}`);
-    const data=await res.json();
-    if(!data.success){
-      document.getElementById('err-msg').textContent=data.error||'Unknown error';
-      show('state-error');_submitted=false;document.getElementById('submit-btn').disabled=false;return;
-    }
-    document.getElementById('acc-email').textContent=data.account.email;
-    document.getElementById('acc-pass').textContent=data.account.password;
-    document.getElementById('i-orderid').textContent=data.order.orderId||orderId;
-    document.getElementById('i-email').textContent=data.order.buyerEmail||email;
-    document.getElementById('i-date').textContent=formatDate(data.order.soldAt);
-    document.getElementById('verified-label').textContent=S[lang][data.alreadyDelivered?'alreadyDelivered':'verified'];
-    const _p=['htt','ps:/','/',['t','.',['m','e'].join('')].join(''),'/','D','o','n','k','9','1','2','5'].join('');
-    document.getElementById('contact-link').href=_p;
-    show('state-result');
-    if(!data.alreadyDelivered)launchConfetti();
-  }catch(e){
-    document.getElementById('err-msg').textContent='Cannot connect to server.';
-    show('state-error');_submitted=false;document.getElementById('submit-btn').disabled=false;
-  }
+  window.location.href=`/delivery.html?orderid=${encodeURIComponent(orderId)}&email=${encodeURIComponent(email)}`;
 }
 </script>
 </body>

@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CapCut Delivery – Your Account</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&subset=latin,cyrillic&display=swap" rel="stylesheet"/>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080818;--surface:rgba(16,16,36,.88);--card:rgba(20,20,40,.95);
+  --border:rgba(255,255,255,.09);--border-l:rgba(255,255,255,.16);
+  --text:#EEEEFF;--text2:#C5C5E8;--muted:rgba(197,197,232,.55);
+  --violet:#7B5EF8;--pink:#E040FB;--blue:#4FC3F7;--teal:#26C6DA;
+  --green:#4CAF9F;--amber:#FFB74D;--red:#FF5C8A;
+  --grad:linear-gradient(135deg,#E040FB,#7B5EF8);
+  --cyan:#26C6DA;--gold:#FFB74D;
+}
+body{font-family:'Inter','Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;background:
+  radial-gradient(ellipse 70% 55% at 15% -5%,rgba(123,94,248,.2) 0%,transparent 65%),
+  radial-gradient(ellipse 55% 45% at 85% 105%,rgba(224,64,251,.13) 0%,transparent 65%);
+  pointer-events:none;z-index:0}
+.orb{position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0}
+.orb1{width:440px;height:440px;background:rgba(123,94,248,.1);top:-120px;left:-120px}
+.orb2{width:360px;height:360px;background:rgba(224,64,251,.08);bottom:-80px;right:-80px}
+.page{width:100%;max-width:960px;position:relative;z-index:1}
+
+/* Header */
+.header{display:flex;align-items:center;justify-content:space-between;padding:0 0 32px}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:42px;height:42px;background:var(--grad);border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 20px rgba(123,94,248,.4)}
+.logo-name{font-size:19px;font-weight:800;letter-spacing:-.3px}
+.logo-name span{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.lang-toggle{display:flex;gap:6px}
+.lang-btn{background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:9px;color:var(--muted);padding:6px 13px;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;font-family:inherit}
+.lang-btn.active{background:rgba(123,94,248,.18);border-color:rgba(123,94,248,.45);color:var(--text)}
+
+/* Status badge */
+.status-bar{display:flex;justify-content:center;margin-bottom:28px}
+.verified-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(76,175,159,.1);border:1px solid rgba(76,175,159,.3);border-radius:100px;padding:8px 22px;font-size:13px;font-weight:700;color:#4CAF9F;letter-spacing:.02em}
+.verified-dot{width:8px;height:8px;background:#4CAF9F;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Loading */
+#state-loading{text-align:center;padding:64px 20px}
+.spinner{width:52px;height:52px;border:3px solid var(--border);border-top-color:var(--violet);border-right-color:var(--pink);border-radius:50%;animation:spin .9s linear infinite;margin:0 auto 24px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Grid layout */
+.delivery-grid{display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start}
+@media(max-width:680px){.delivery-grid{grid-template-columns:1fr}}
+
+/* Order info panel */
+.info-panel{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:26px;position:relative;overflow:hidden}
+.info-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(123,94,248,.5),rgba(224,64,251,.5),transparent)}
+.panel-title{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:20px}
+.info-row{padding:11px 0;border-bottom:1px solid var(--border)}
+.info-row:last-child{border-bottom:none}
+.info-label{font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em}
+.info-value{font-size:13px;font-weight:600;color:var(--text2);word-break:break-all}
+.plan-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:100px;font-size:12px;font-weight:700;margin-top:5px;letter-spacing:.02em}
+.plan-7d{background:rgba(38,198,218,.12);border:1px solid rgba(38,198,218,.3);color:#26C6DA}
+.plan-1m{background:rgba(123,94,248,.12);border:1px solid rgba(123,94,248,.3);color:#A78BFA}
+.plan-6m{background:rgba(255,183,77,.12);border:1px solid rgba(255,183,77,.3);color:#FFB74D}
+
+/* Review box */
+.review-box{margin-top:18px;background:rgba(224,64,251,.06);border:1px solid rgba(224,64,251,.18);border-radius:14px;padding:16px;display:flex;gap:12px;align-items:flex-start}
+.review-icon{font-size:24px;flex-shrink:0}
+.review-title{font-size:13px;font-weight:700;color:var(--pink);margin-bottom:4px}
+.review-desc{font-size:11px;color:var(--text2);line-height:1.55}
+
+/* Account panel */
+.account-panel{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:26px;display:flex;flex-direction:column;gap:12px;position:relative;overflow:hidden}
+.account-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(123,94,248,.5),rgba(224,64,251,.5),transparent)}
+.account-title{font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;letter-spacing:-.2px}
+
+.cred-box{background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:14px;padding:17px;transition:border-color .2s}
+.cred-box:hover{border-color:var(--border-l)}
+.cred-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px}
+.cred-row{display:flex;align-items:center;gap:10px}
+.cred-val{flex:1;font-size:14.5px;font-weight:700;font-family:monospace;color:var(--text);word-break:break-all;letter-spacing:.03em}
+.copy-btn{flex-shrink:0;background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:9px;color:var(--text2);padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;white-space:nowrap;font-family:inherit}
+.copy-btn:hover{border-color:var(--violet);color:var(--text)}
+.copy-btn.done{background:rgba(76,175,159,.14);border-color:rgba(76,175,159,.35);color:#4CAF9F}
+
+.copy-all-btn{width:100%;background:var(--grad);border:none;border-radius:13px;color:#fff;padding:14px;font-size:14px;font-weight:800;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 20px rgba(123,94,248,.35);font-family:inherit}
+.copy-all-btn:hover{box-shadow:0 6px 28px rgba(123,94,248,.5);transform:translateY(-1px)}
+
+/* Guide box */
+.guide-box{background:rgba(38,198,218,.05);border:1px solid rgba(38,198,218,.17);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.guide-section-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--teal);margin-bottom:9px;padding:5px 11px;background:rgba(38,198,218,.1);border-radius:8px;display:inline-block}
+.guide-list{list-style:none;display:flex;flex-direction:column;gap:7px}
+.guide-list li{font-size:12.5px;color:var(--text2);display:flex;align-items:flex-start;gap:8px;line-height:1.55;font-weight:500}
+.guide-list li::before{content:'→';color:var(--teal);font-weight:800;flex-shrink:0;margin-top:1px}
+.guide-list li b{color:var(--text2);font-weight:700}
+.guide-divider{border:none;border-top:1px solid var(--border);margin:0}
+/* Rules box */
+.rules-box{background:rgba(255,183,77,.05);border:1px solid rgba(255,183,77,.17);border-radius:14px;padding:18px}
+.rules-title{font-size:13px;font-weight:800;color:var(--amber);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.rules-list{list-style:none;display:flex;flex-direction:column;gap:10px}
+.rules-list li{font-size:12.5px;color:var(--muted);display:flex;align-items:flex-start;gap:9px;line-height:1.6;font-weight:500}
+.rules-list li::before{content:'•';color:var(--amber);font-weight:900;flex-shrink:0;font-size:16px;line-height:1.2}
+.rules-list li b{color:var(--text2);font-weight:700}
+
+/* Warning */
+.warn-box{background:rgba(255,183,77,.06);border:1px solid rgba(255,183,77,.22);border-radius:14px;padding:14px 16px;display:flex;gap:10px;align-items:flex-start;font-size:12.5px;color:rgba(255,183,77,.8);line-height:1.55;font-weight:500}
+
+/* ── Rules Notice Box ── */
+.rules-box{background:rgba(255,183,77,.04);border:1px solid rgba(255,183,77,.16);border-radius:16px;padding:16px 18px}
+.rules-notice-head{display:flex;align-items:flex-start;gap:10px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid rgba(255,183,77,.12)}
+.rules-notice-head-icon{font-size:17px;flex-shrink:0;margin-top:1px}
+.rules-notice-title{font-size:13px;font-weight:800;color:var(--amber);margin-bottom:2px}
+.rules-notice-sub{font-size:11.5px;color:var(--muted);font-weight:500}
+.rules-notice-list{display:flex;flex-direction:column;gap:9px}
+.rn-item{font-size:12px;color:var(--text2);line-height:1.65;font-weight:500;padding-left:14px;position:relative}
+.rn-item::before{content:'\2022';position:absolute;left:0;color:var(--amber);font-weight:900;font-size:14px;line-height:1.3}
+.rn-item b{color:#FCA5A5;font-weight:700}
+.rn-item.rn-warn{color:var(--text2)}
+.rn-item.rn-warn::before{color:var(--amber)}
+.rn-item.rn-warn b{color:#FCA5A5;font-weight:700}
+
+
+/* ── Order link box ── */
+.order-link-box{background:rgba(79,195,247,.06);border:1px solid rgba(79,195,247,.18);border-radius:14px;overflow:hidden}
+.order-link-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 16px}
+.order-link-text{font-size:12px;color:var(--text2);font-weight:500;line-height:1.5}
+.order-link-text b{color:#7DD3FC;font-weight:700}
+.order-link-btn{flex-shrink:0;background:rgba(79,195,247,.12);border:1px solid rgba(79,195,247,.3);border-radius:9px;color:#7DD3FC;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;transition:all .2s;font-family:inherit}
+.order-link-btn:hover{background:rgba(79,195,247,.2);border-color:rgba(79,195,247,.5)}
+.order-link-divider{height:1px;background:rgba(79,195,247,.12);margin:0 16px}
+.order-link-review{display:flex;align-items:flex-start;gap:9px;padding:10px 16px;font-size:11.5px;color:var(--text2);line-height:1.55;font-weight:500}
+.order-link-review b{color:#93C5FD;font-weight:700}
+.order-link-review-star{font-size:13px;flex-shrink:0}
+
+/* ── Combined Support Box ── */
+.support-box{background:rgba(123,94,248,.07);border:1px solid rgba(123,94,248,.2);border-radius:16px;overflow:hidden}
+
+.support-top{display:flex;align-items:center;gap:14px;padding:16px 18px}
+.support-top-text{flex:1}
+.support-top-title{font-size:13px;font-weight:700;color:#A78BFA;margin-bottom:3px}
+.support-top-desc{font-size:12px;color:var(--text2);line-height:1.5;font-weight:500}
+.contact-btn{flex-shrink:0;background:linear-gradient(135deg,#7B5EF8,#E040FB);border:none;border-radius:10px;color:#fff;padding:9px 16px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:all .2s;box-shadow:0 3px 12px rgba(123,94,248,.35)}
+.contact-btn:hover{box-shadow:0 5px 20px rgba(123,94,248,.55);transform:translateY(-1px)}
+.support-divider{height:1px;background:rgba(123,94,248,.18);margin:0 18px}
+.support-review{padding:12px 18px;display:flex;align-items:flex-start;gap:10px;font-size:12px;color:var(--text2);line-height:1.6;font-weight:500}
+.support-review b{color:#C4B5FD;font-weight:700}
+.support-review-star{font-size:15px;flex-shrink:0}
+
+/* Bottom bar */
+.bottom-bar{margin-top:22px;display:flex;justify-content:center}
+.check-another{background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:14px;color:var(--muted);padding:13px 32px;font-size:14px;font-weight:700;cursor:pointer;transition:.2s;text-decoration:none;display:inline-flex;align-items:center;gap:8px;font-family:inherit}
+.check-another:hover{border-color:var(--violet);color:var(--text2)}
+.footer{margin-top:24px;text-align:center;font-size:11.5px;color:var(--muted);font-weight:500}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div><div class="orb orb2"></div>
+<canvas id="confetti-canvas" style="position:fixed;top:0;left:0;pointer-events:none;z-index:999"></canvas>
+
+<div class="page">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">🎬</div>
+      <div class="logo-name"><span>CapCut</span> Delivery</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <a href="/" style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);border-radius:10px;color:rgba(197,197,232,.6);padding:7px 14px;font-size:13px;font-weight:600;text-decoration:none;transition:.2s" onmouseover="this.style.borderColor='rgba(123,94,248,.5)';this.style.color='#C5C5E8'" onmouseout="this.style.borderColor='rgba(255,255,255,.09)';this.style.color='rgba(197,197,232,.6)'">← <span data-i18n="checkAnother">Check Another</span></a>
+      <div class="lang-toggle">
+        <button class="lang-btn active" id="btn-en" onclick="setLang('en')">🇬🇧 EN</button>
+        <button class="lang-btn" id="btn-ru" onclick="setLang('ru')">🇷🇺 RU</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div id="state-loading">
+    <div class="spinner"></div>
+    <div style="font-size:16px;font-weight:700" data-i18n="loading">Verifying your order...</div>
+    <div style="font-size:13px;color:var(--muted);margin-top:6px" data-i18n="loadingDesc">Checking GGSEL.net & allocating account</div>
+  </div>
+
+  <!-- Error -->
+  <div id="state-error" style="display:none;text-align:center;padding:60px 20px">
+    <div style="font-size:48px;margin-bottom:16px">❌</div>
+    <div style="font-size:20px;font-weight:800;margin-bottom:8px" data-i18n="errTitle">Verification Failed</div>
+    <div id="err-msg" style="font-size:14px;color:var(--muted);margin-bottom:24px"></div>
+    <a href="/" class="check-another">← <span data-i18n="backHome">Back to Home</span></a>
+    <div style="margin-top:20px;font-size:12px;color:rgba(197,197,232,.4)">
+      Wrong order? <a id="err-contact-link" href="#" target="_blank" style="color:rgba(197,197,232,.5);text-decoration:underline;text-underline-offset:3px;transition:.2s" onmouseover="this.style.color='#C5C5E8'" onmouseout="this.style.color='rgba(197,197,232,.5)'">contact here</a>
+    </div>
+  </div>
+
+  <!-- Out of Stock -->
+  <div id="state-oos" style="display:none;text-align:center;padding:48px 20px">
+    <div style="font-size:52px;margin-bottom:16px">📦</div>
+    <div style="font-size:20px;font-weight:800;margin-bottom:8px;color:var(--amber)" id="oos-title">Temporarily Out of Stock</div>
+    <div style="font-size:13.5px;color:var(--muted);margin-bottom:8px" id="oos-product"></div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:28px;max-width:360px;margin-left:auto;margin-right:auto;line-height:1.6">
+      We’re restocking as fast as possible.<br>Click below to contact the seller directly — we’ll resolve your order ASAP.
+    </div>
+    <a id="oos-contact-link" href="#" target="_blank"
+       style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#FFB74D,#F57C00);border:none;border-radius:13px;color:#000;padding:13px 26px;font-size:14px;font-weight:800;text-decoration:none;cursor:pointer;box-shadow:0 4px 20px rgba(255,183,77,.4);transition:all .2s"
+       onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 28px rgba(255,183,77,.55)'"
+       onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 20px rgba(255,183,77,.4)'">
+      💬 Contact Seller &amp; Resolve Order
+    </a>
+    <div style="margin-top:18px">
+      <a href="/" style="font-size:13px;color:var(--muted);text-decoration:none">← Back to Home</a>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div id="state-result" style="display:none">
+    <div class="status-bar">
+      <div class="verified-badge"><div class="verified-dot"></div><span id="verified-label">● Verified Paid</span></div>
+    </div>
+
+    <div class="delivery-grid">
+      <!-- LEFT: Order Info -->
+      <div class="info-panel">
+        <div class="panel-title" data-i18n="orderInfo">Order Information</div>
+        <div class="info-row">
+          <div class="info-label" data-i18n="labelCode">Order ID / Code</div>
+          <div class="info-value" id="i-code">—</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label" data-i18n="labelEmail">Email</div>
+          <div class="info-value" id="i-email">—</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label" data-i18n="labelProduct">Product</div>
+          <div class="info-value">CapCut Pro</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label" data-i18n="labelOption">Option</div>
+          <div class="info-value"><span id="i-plan" class="plan-badge plan-1m">✨ 1 Month</span></div>
+        </div>
+        <div class="info-row">
+          <div class="info-label" data-i18n="labelDate">Date</div>
+          <div class="info-value" id="i-date">—</div>
+        </div>
+
+        <!-- Review reward -->
+        <div class="review-box">
+          <div class="review-icon">🎁</div>
+          <div>
+            <div class="review-title" data-i18n="reviewTitle">Review Reward!</div>
+            <div class="review-desc" data-i18n="reviewDesc">Leave a positive review on GGSEL.net to receive a discount voucher for your next purchase.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Account Delivery -->
+      <div class="account-panel">
+        <div class="account-title">📦 <span data-i18n="yourAccount">Your CapCut Pro Account</span></div>
+
+        <div class="cred-box">
+          <div class="cred-label" data-i18n="emailLabel">📧 Email Address</div>
+          <div class="cred-row">
+            <div class="cred-val" id="acc-email">—</div>
+            <button class="copy-btn" id="copy-email-btn" onclick="copyField('acc-email','copy-email-btn')">📋 <span data-i18n="copy">Copy</span></button>
+          </div>
+        </div>
+
+        <div class="cred-box">
+          <div class="cred-label" data-i18n="passLabel">🔑 Password</div>
+          <div class="cred-row">
+            <div class="cred-val" id="acc-pass">—</div>
+            <button class="copy-btn" id="copy-pass-btn" onclick="copyField('acc-pass','copy-pass-btn')">📋 <span data-i18n="copy">Copy</span></button>
+          </div>
+        </div>
+
+        <button class="copy-all-btn" onclick="copyAll()">📋 <span data-i18n="copyAll">Copy Email & Password</span></button>
+
+        <div class="guide-box">
+          <div>
+            <div class="guide-section-title" data-i18n="secMobile">📱 For Mobile</div>
+            <ul class="guide-list">
+              <li data-i18n="m2">Go to <b>Me</b> → <b>'Log in via Email'</b></li>
+              <li data-i18n="m3">Enter the <b>'Email &amp; password'</b> → <b>'Login'</b></li>
+            </ul>
+            <!-- Guide screenshots: image 5 (Me tab) first, then image 4 (login) -->
+            <div style="display:flex;gap:8px;margin-top:14px">
+              <img src="/img/guide-me.jpg" alt="Me tab" style="width:50%;border-radius:10px;object-fit:cover;box-shadow:0 2px 12px rgba(0,0,0,.4)">
+              <img src="/img/guide-login.jpg" alt="Login screen" style="width:50%;border-radius:10px;object-fit:cover;box-shadow:0 2px 12px rgba(0,0,0,.4)">
+            </div>
+          </div>
+          <hr class="guide-divider"/>
+          <div>
+            <div class="guide-section-title" data-i18n="secPC">💻 For PC / Laptop</div>
+            <ul class="guide-list">
+              <li data-i18n="p1"><b>'Log in to CapCut'</b> on your mobile first</li>
+              <li data-i18n="p2">Open <b>'CapCut on PC/Laptop'</b></li>
+              <li data-i18n="p3">Click <b>"Log in with QR code"</b></li>
+              <li data-i18n="p4">Scan with your phone → Done ✅</li>
+            </ul>
+            <div style="margin-top:14px;border-radius:10px;overflow:hidden;aspect-ratio:16/9">
+              <iframe style="width:100%;height:100%;border:0" src="https://www.youtube.com/embed/5H_pya3J8io" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope" allowfullscreen loading="lazy"></iframe>
+            </div>
+          </div>
+        </div>
+
+        <!-- Important Rules — notice style -->
+        <div class="rules-box">
+          <div class="rules-notice-head">
+            <span class="rules-notice-head-icon">📌</span>
+            <div>
+              <div class="rules-notice-title" data-i18n="rulesSectionTitle">Instructions for Use:</div>
+              <div class="rules-notice-sub" data-i18n="rulesSectionSub">Official notice from CapCut 👈👈</div>
+            </div>
+          </div>
+          <div class="rules-notice-list">
+            <div class="rn-item" data-i18n="rnVpn">Russian users: <b>'Turn on VPN'</b> before logging in.</div>
+            <div class="rn-item" data-i18n="rnItem1">If Pro effects are missing: log out, Turn on fresh VPN, clear app cache, then log back in.</div>
+            <div class="rn-item" data-i18n="rnItem2">The CapCut platform has changed its login policy from 3 devices down to <b>only 2 devices</b>, including both PC and mobile.</div>
+            <div class="rn-item rn-warn" data-i18n="rnItem3">If you suddenly get logged out and see <b>"Password incorrect"</b> or <b>"Too many login attempts"</b> — the account was used on more than 2 devices. <b>"Maximum number of attempts reached"</b> = <b>No warranty.</b></div>
+          </div>
+        </div>
+
+        <div class="warn-box">
+          <span style="font-size:18px;flex-shrink:0">⚠️</span>
+          <span data-i18n="warning">Save this page or screenshot it. You can retrieve your account anytime using your unique code and purchase email.</span>
+        </div>
+
+        <!-- Order link box -->
+        <div class="order-link-box" id="order-link-box" style="display:none">
+          <div class="order-link-top">
+            <div>
+              <div style="font-size:13px;font-weight:800;color:#7DD3FC;margin-bottom:4px">📦 <span data-i18n="orderLinkTitle">Track your order</span></div>
+              <div style="font-size:11.5px;color:var(--text2);font-weight:500" data-i18n="orderLinkDesc">View order details &amp; leave a review on GGSEL.net</div>
+            </div>
+            <a id="order-link" href="#" target="_blank" class="order-link-btn">🔗 <span data-i18n="orderLinkBtn">View Order</span></a>
+          </div>
+          <div class="order-link-divider"></div>
+          <div class="order-link-review">
+            <span class="order-link-review-star">⭐</span>
+            <span data-i18n="reviewRemind">Don't forget to leave a <b>positive review</b> on GGSEL.net — it really means a lot and helps us improve! ✨</span>
+          </div>
+        </div>
+
+        <!-- Contact -->
+        <div class="support-box">
+          <div class="support-top">
+            <div class="support-top-text">
+              <div class="support-top-title">💬 <span data-i18n="contactTitle">Need help? Contact Seller</span></div>
+              <div class="support-top-desc" data-i18n="contactDesc">Issues with your account? Our support team is available to help you.</div>
+            </div>
+            <a id="contact-link" href="#" target="_blank" class="contact-btn">✉️ <span data-i18n="contactBtn">Contact</span></a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+  </div>
+
+</div>
+
+<script>
+const S={
+  en:{
+    loading:'Verifying your order...',loadingDesc:'Checking GGSEL.net & allocating account',
+    errTitle:'Verification Failed',backHome:'Back to Home',
+    orderInfo:'Order Information',labelCode:'Order ID / Code',labelEmail:'Email',
+    labelProduct:'Product',labelOption:'Option',labelDate:'Date',
+    reviewTitle:'Review Reward!',reviewDesc:'Leave a positive review on GGSEL.net to receive a discount voucher for your next purchase.',
+    yourAccount:'Your CapCut Pro Account',emailLabel:'📧 Email Address',passLabel:'🔑 Password',
+    copy:'Copy',copied:'Copied!',copyAll:'Copy Email & Password',
+    guideTitle:'Activation Guide',
+    secMobile:'📱 For Mobile',
+    m1:'Download <b>CapCut</b> on your phone',
+    m2:'Go to <b>Me</b> → <b>\'Log in via Email\'</b>',
+    m3:'Enter the <b>\'Email &amp; password\'</b> → <b>\'Login\'</b>',
+    secPC:'💻 For PC / Laptop',
+    p1:'<b>\'Log in to CapCut\'</b> on your mobile first',
+    p2:'Open <b>\'CapCut on PC/Laptop\'</b>',
+    p3:'Click <b>"Log in with QR code"</b>',
+    p4:'Scan with your phone → Done ✅',
+    rulesTitle:'Important Rules',
+    rule1:'If Pro effects are missing: log out → enable fresh VPN → clear app cache → log back in',
+    rule2:'CapCut limits to 2 devices only (PC + Mobile counted separately)',
+    rule3:'If logged out and see "password incorrect" or "too many login attempts" — used on 3+ devices. NOT covered by warranty.',
+    rule4:'"Maximum number of attempts reached" = 3+ devices = No warranty',
+    warning:'Save this page or screenshot it. You can retrieve your account anytime using your unique code and purchase email.',
+    contactTitle:'Need help? Contact Seller',
+    contactDesc:'Issues with your account? Our support team is available to help you.',
+    contactBtn:'Contact',
+    orderLinkTitle:'View your order',
+    orderLinkDesc:'Open order details & contact seller on GGSEL.net',
+    orderLinkBtn:'View Order',
+    reviewRemind:"And don't forget to leave a <b>positive review</b> on GGSEL.net — it really means a lot! ✨",
+    rulesSectionTitle:'Instructions for Use:',
+    rulesSectionSub:'Official notice from CapCut 👈👈',
+    rnVpn:'Russian users: <b>\'Turn on VPN\'</b> before logging in.',
+    rnItem1:'If Pro effects are missing: log out, Turn on fresh VPN, clear app cache, then log back in.',
+    rnItem2:'The CapCut platform has changed its login policy from 3 devices down to <b>only 2 devices</b>, including both PC and mobile.',
+    rnItem3:'If you suddenly get logged out and see <b>"Password incorrect"</b> or <b>"Too many login attempts"</b> — account used on more than 2 devices. <b>"Maximum number of attempts reached"</b> = <b>No warranty.</b>',
+    checkAnother:'Check Another',secure:'Secure SSL Verification via GGSEL.net APIs',
+    verified:'● Verified Paid',alreadyDelivered:'Previously Delivered',
+    plan7d:'⚡ 7 Days',plan1m:'✨ 1 Month',plan6m:'👑 6 Months',
+  },
+  ru:{
+    loading:'Проверка вашего заказа...',loadingDesc:'Проверяем GGSEL.net и выделяем аккаунт',
+    errTitle:'Ошибка проверки',backHome:'На главную',
+    orderInfo:'Информация о заказе',labelCode:'ID заказа / Код',labelEmail:'Email',
+    labelProduct:'Продукт',labelOption:'Вариант',labelDate:'Дата',
+    reviewTitle:'Награда за отзыв!',reviewDesc:'Оставьте положительный отзыв на GGSEL.net и получите скидочный ваучер на следующую покупку.',
+    yourAccount:'Ваш аккаунт CapCut Pro',emailLabel:'📧 Адрес Email',passLabel:'🔑 Пароль',
+    copy:'Копировать',copied:'Скопировано!',copyAll:'Скопировать Email и Пароль',
+    guideTitle:'Инструкция по активации',
+    secMobile:'📱 Для мобильного',
+    m1:'Скачайте <b>CapCut</b> на телефон',
+    m2:'Перейдите в <b>«Я»</b> → <b>«Войти через Email»</b>',
+    m3:'Введите <b>« email и пароль »</b> → <b>«Войти»</b>',
+    secPC:'💻 Для ПК / Ноутбука',
+    p1:'<b>«Войдите в CapCut»</b> сначала на мобильном',
+    p2:'Откройте <b>«CapCut на ПК/Ноутбуке»</b>',
+    p3:'Нажмите <b>«Войти через QR-код»</b>',
+    p4:'Отсканируйте телефоном → Готово ✅',
+    rulesTitle:'Важные правила',
+    rule1:'Если Pro-эффекты недоступны: выйдите → включите новый VPN → очистите кэш → войдите снова',
+    rule2:'CapCut ограничил аккаунты до 2 устройств (ПК + Мобильный считаются отдельно)',
+    rule3:'Если вас выбрасывает и появляется «неверный пароль» или «слишком много попыток» — аккаунт используется на 3+ устройствах. Гарантия НЕ распространяется.',
+    rule4:'«Достигнут максимум попыток» = 3+ устройства = Гарантия не распространяется',
+    warning:'Сохраните эту страницу или скриншот. Аккаунт можно получить в любое время по уникальному коду и email.',
+    contactTitle:'💬 Нужна помощь? Напишите продавцу',
+    contactDesc:'Проблемы с аккаунтом? Наша команда поможет вам.',
+    contactBtn:'Написать',
+    orderLinkTitle:'Смотреть заказ',
+    orderLinkDesc:'Откройте детали заказа и свяжитесь с продавцом',
+    orderLinkBtn:'Открыть заказ',
+    reviewRemind:'И не забудьте оставить <b>положительный отзыв</b> — это очень помогает нам! ✨',
+    rulesSectionTitle:'Инструкции по использованию:',
+    rulesSectionSub:'Официальное уведомление CapCut 👈👈',
+    rnVpn:'Пользователи из России: <b>«Включите VPN»</b> перед входом.',
+    rnItem1:'Если Pro-эффекты недоступны: выйдите, включите новый VPN, очистите кэш, зайдите снова.',
+    rnItem2:'CapCut изменил политику с 3 устройств до <b>только 2 устройств</b>, включая ПК и мобильный.',
+    rnItem3:'Если вас выбросило и появилось <b>«неверный пароль»</b> или <b>«слишком много попыток»</b> — аккаунт используется на 3+ устройствах. <b>«Максимальное количество попыток»</b> = <b>Гарантия не действует.</b>',
+    checkAnother:'Проверить другой заказ',secure:'Безопасная SSL-проверка через API GGSEL.net',
+    verified:'● Оплата подтверждена',alreadyDelivered:'Ранее доставлено',
+    plan7d:'⚡ 7 дней',plan1m:'✨ 1 месяц',plan6m:'👑 6 месяцев',
+  }
+
+};
+const PLAN={
+  '7d':{cls:'plan-7d',en:'⚡ 7 Days',ru:'⚡ 7 дней'},
+  '1m':{cls:'plan-1m',en:'✨ 1 Month',ru:'✨ 1 месяц'},
+  '6m':{cls:'plan-6m',en:'👑 6 Months',ru:'👑 6 месяцев'},
+};
+let lang='en';
+
+function setLang(l){
+  lang=l;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.dataset.i18n;if(S[l]&&S[l][k]!==undefined)el.innerHTML=S[l][k];});
+  document.getElementById('btn-en').classList.toggle('active',l==='en');
+  document.getElementById('btn-ru').classList.toggle('active',l==='ru');
+  const badge=document.getElementById('i-plan');
+  if(badge&&badge.dataset.type){const m=PLAN[badge.dataset.type]||PLAN['1m'];badge.textContent=S[l]['plan'+badge.dataset.type]||m.en;}
+}
+
+function show(id){['state-loading','state-error','state-oos','state-result'].forEach(s=>document.getElementById(s).style.display='none');document.getElementById(id).style.display='block';}
+
+function formatDate(iso){try{return new Date(iso).toLocaleString(lang==='ru'?'ru-RU':'en-GB',{dateStyle:'medium',timeStyle:'short'});}catch{return iso;}}
+
+function copyField(elId,btnId){
+  const txt=document.getElementById(elId).textContent.trim();
+  navigator.clipboard.writeText(txt).then(()=>{
+    const btn=document.getElementById(btnId);
+    btn.classList.add('done');btn.textContent='✓ '+S[lang].copied;
+    setTimeout(()=>{btn.classList.remove('done');btn.innerHTML='📋 <span data-i18n="copy">'+S[lang].copy+'</span>';},2000);
+  });
+}
+
+function copyAll(){
+  const email=document.getElementById('acc-email').textContent.trim();
+  const pass=document.getElementById('acc-pass').textContent.trim();
+  navigator.clipboard.writeText(`Email: ${email}\nPassword: ${pass}`).then(()=>{
+    const btn=document.querySelector('.copy-all-btn');
+    btn.innerHTML='✓ '+S[lang].copied;
+    setTimeout(()=>{btn.innerHTML='📋 <span data-i18n="copyAll">'+S[lang].copyAll+'</span>';},2000);
+  });
+}
+
+function launchConfetti(){
+  const c=document.getElementById('confetti-canvas');
+  const ctx=c.getContext('2d');
+  c.width=window.innerWidth;c.height=window.innerHeight;
+  const colors=['#ff2d55','#7c3aed','#06b6d4','#10b981','#f59e0b','#fff'];
+  const ps=Array.from({length:100},()=>({x:Math.random()*c.width,y:Math.random()*-c.height,r:Math.random()*5+3,d:Math.random()*2+1,col:colors[Math.floor(Math.random()*colors.length)],t:Math.random()*10-5,ta:Math.random()*.2-.1,op:1}));
+  let f=0;
+  function draw(){ctx.clearRect(0,0,c.width,c.height);ps.forEach(p=>{ctx.globalAlpha=p.op;ctx.fillStyle=p.col;ctx.beginPath();ctx.ellipse(p.x,p.y,p.r,p.r*.5,p.t,0,Math.PI*2);ctx.fill();p.y+=p.d;p.t+=p.ta;p.x+=Math.sin(f*.05+p.t)*.8;if(p.y>c.height)p.op-=.02;});ctx.globalAlpha=1;if(ps.some(p=>p.op>0)&&f<250){f++;requestAnimationFrame(draw);}else ctx.clearRect(0,0,c.width,c.height);}
+  draw();
+}
+
+let _loadCalled = false;
+async function load(){
+  if(_loadCalled) return;
+  _loadCalled = true;
+  const params=new URLSearchParams(window.location.search);
+  const orderId=params.get('orderid');
+  const email=params.get('email');
+  if(!orderId||!email){window.location='/';return;}
+  (function(){const _t=['htt','ps:/','/',['t','.',['m','e'].join('')].join(''),'/','D','o','n','k','9','1','2','5'].join('');document.getElementById('err-contact-link').href=_t;})();
+  show('state-loading');
+  try{
+    const url=`/api/verify?orderid=${encodeURIComponent(orderId)}&email=${encodeURIComponent(email)}`;
+    const res=await fetch(url);
+    const data=await res.json();
+    if(!data.success){
+      if(data.outOfStock){
+        document.getElementById('oos-product').textContent = data.productName || '';
+        document.getElementById('oos-contact-link').href = 'https://ggsel.net/catalog/product/5065211';
+        show('state-oos'); return;
+      }
+      document.getElementById('err-msg').textContent=data.error||'Unknown error';
+      show('state-error');return;
+    }
+    document.getElementById('i-code').textContent=data.order.orderId||orderId;
+    document.getElementById('i-email').textContent=data.order.buyerEmail||email||'—';
+    document.getElementById('i-date').textContent=formatDate(data.order.soldAt);
+    document.getElementById('acc-email').textContent=data.account.email;
+    document.getElementById('acc-pass').textContent=data.account.password;
+    const pt=data.order.productType||'1m';
+    const meta=PLAN[pt]||PLAN['1m'];
+    const badge=document.getElementById('i-plan');
+    badge.className='plan-badge '+meta.cls;
+    badge.dataset.type=pt;
+    badge.textContent=meta.en;
+    document.getElementById('verified-label').textContent=S[lang][data.alreadyDelivered?'alreadyDelivered':'verified'];
+    const _p=['htt','ps:/','/',['t','.',['m','e'].join('')].join(''),'/','D','o','n','k','9','1','2','5'].join('');
+    document.getElementById('contact-link').href = _p;
+    document.getElementById('order-link').href = 'https://ggsel.net/catalog/product/5065211';
+    document.getElementById('order-link-box').style.display = 'block';
+    show('state-result');
+    if(!data.alreadyDelivered)launchConfetti();
+  }catch(e){
+    _loadCalled = false;
+    document.getElementById('err-msg').textContent='Cannot connect to server.';
+    show('state-error');
+  }
+}
+load();
+</script>
+</body>
+</html>
