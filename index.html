@@ -246,9 +246,37 @@ function launchConfetti(){
 function submitForm(){
   const orderId=document.getElementById('inp-orderid').value.trim();
   const email=document.getElementById('inp-email').value.trim();
-  if(!orderId||!email){alert(S[lang].errEmpty);return;}
-  window.location.href=`/delivery.html?orderid=${encodeURIComponent(orderId)}&email=${encodeURIComponent(email)}`;
+  if(!orderId){alert(S[lang].errEmpty);return;}
+  let url=`/delivery.html?orderid=${encodeURIComponent(orderId)}`;
+  if(email) url+=`&email=${encodeURIComponent(email)}`;
+  window.location.href=url;
 }
+
+// Auto-redirect: if ?orderid= is in URL, go straight to delivery
+(function(){
+  const params=new URLSearchParams(window.location.search);
+  const orderid=params.get('orderid');
+  if(orderid){
+    // Auto-deliver: redirect to delivery.html with orderid (email optional)
+    const email=params.get('email')||'';
+    let url=`/delivery.html?orderid=${encodeURIComponent(orderid)}`;
+    if(email) url+=`&email=${encodeURIComponent(email)}`;
+    window.location.replace(url);
+    return;
+  }
+  // If ?uniquecode= from GGSEL "By link", show form (buyer needs to enter Order ID)
+  const uc=params.get('uniquecode');
+  if(uc){
+    // Show a hint to the buyer
+    const hint=document.createElement('div');
+    hint.style.cssText='text-align:center;color:#7DD3FC;font-size:13px;margin-bottom:12px;font-weight:600;';
+    hint.innerHTML=lang==='ru'
+      ? '🔗 Введите номер заказа с GGSEL для получения аккаунта'
+      : '🔗 Enter your GGSEL Order ID to receive your account';
+    const form=document.getElementById('state-form');
+    if(form&&form.firstChild) form.insertBefore(hint,form.firstChild);
+  }
+})();
 </script>
 </body>
 </html>

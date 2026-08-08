@@ -486,12 +486,13 @@ async function load(){
   _loadCalled = true;
   const params=new URLSearchParams(window.location.search);
   const orderId=params.get('orderid');
-  const email=params.get('email');
-  if(!orderId||!email){window.location='/';return;}
+  const email=params.get('email')||'';
+  if(!orderId){window.location='/';return;}
 
   show('state-loading');
   try{
-    const url=`/api/verify?orderid=${encodeURIComponent(orderId)}&email=${encodeURIComponent(email)}`;
+    let url=`/api/verify?orderid=${encodeURIComponent(orderId)}`;
+    if(email) url+=`&email=${encodeURIComponent(email)}`;
     const res=await fetch(url);
     const data=await res.json();
     if(!data.success){

@@ -1,12 +1,17 @@
 /**
- * /api/verify?orderid=XXX&email=YYY
+ * /api/verify?orderid=XXX[&email=YYY]
  *
- * GGSEL CapCut 30-day delivery:
+ * GGSEL CapCut delivery:
+ * - If orderid + email → verify email match then deliver
+ * - If orderid only   → auto-deliver (for GGSEL "By link" flow)
+ *
+ * Steps:
  * 1. Check Orders sheet (idempotency)
  * 2. Verify via GGSEL API (purchase/info/{invoice_id})
- * 3. Match buyer email
- * 4. Deliver account from "CapCut Pro 1 Tháng" sheet
- * 5. Save to Orders sheet
+ * 3. Match buyer email (if provided)
+ * 4. Detect product (7d / 1m) by item_id
+ * 5. Deliver account from correct sheet
+ * 6. Save to Orders sheet
  */
 const { verifyOrder } = require('../lib/ggsel');
 const {
@@ -53,9 +58,6 @@ module.exports = async (req, res) => {
   if (!orderId) {
     return res.status(400).json({ success: false, error: 'Missing Order ID.' });
   }
-  if (!emailParam) {
-    return res.status(400).json({ success: false, error: 'Missing email.' });
-  }
 
   // Key for Orders sheet: prefix with "ggsel-" to avoid collision with Plati codes
   const orderKey = `ggsel-${orderId}`;
@@ -77,7 +79,8 @@ module.exports = async (req, res) => {
     /* ── 1. Idempotency check ────────────────────────────────────── */
     const existing = await findOrderByCode(orderKey);
     if (existing) {
-      if (emailParam !== (existing.buyerEmail || '').toLowerCase()) {
+      // If email was provided, verify it matches
+      if (emailParam && emailParam !== (existing.buyerEmail || '').toLowerCase()) {
         return res.status(403).json({
           success: false,
           error: 'Email does not match. / Email не совпадает.',
@@ -114,8 +117,8 @@ module.exports = async (req, res) => {
       });
     }
 
-    /* ── 3. Email match ──────────────────────────────────────────── */
-    if (!orderInfo.buyerEmail || orderInfo.buyerEmail !== emailParam) {
+    /* ── 3. Email match (only if email was provided) ─────────────── */
+    if (emailParam && orderInfo.buyerEmail && orderInfo.buyerEmail !== emailParam) {
       return res.status(403).json({
         success: false,
         error: 'Email does not match purchase email. / Email не совпадает.',
@@ -128,18 +131,12 @@ module.exports = async (req, res) => {
       '5065211': { sheetName: 'CapCut Pro 1 Tháng', productType: '1m', productName: 'CapCut Pro 1 Month (GGSEL)' },
     };
 
-    // Debug: log what GGSEL API returns for product detection
-    console.log(`[ggsel] Order ${orderId} → productId: "${orderInfo.productId}", productName: "${orderInfo.productName}", raw keys: ${Object.keys(orderInfo.raw || {}).join(',')}`);
+    console.log(`[ggsel] Order ${orderId} → productId: "${orderInfo.productId}"`);
 
-    // Detect by product ID first, then by name keywords, default to 1m
+    // Detect by product ID, default to 1m
     let product = PRODUCTS[orderInfo.productId];
     if (!product) {
-      const name = (orderInfo.productName || '').toLowerCase();
-      if (/\b7\b|7.?day|7.?д/.test(name)) {
-        product = PRODUCTS['5450773'];
-      } else {
-        product = PRODUCTS['5065211']; // default 1m
-      }
+      product = PRODUCTS['5065211']; // default 1m
     }
 
     const { sheetName, productType, productName } = product;
