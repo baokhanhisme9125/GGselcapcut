@@ -83,6 +83,19 @@ module.exports = async (req, res) => {
           error: 'Email does not match. / Email не совпадает.',
         });
       }
+      // Verify actual product type from GGSEL API and override if stored wrong
+      try {
+        const liveInfo = await verifyOrder(orderId);
+        const PRODUCTS = {
+          '5450773': { productType: '7d', productName: 'CapCut Pro 7 Days (GGSEL)' },
+          '5065211': { productType: '1m', productName: 'CapCut Pro 1 Month (GGSEL)' },
+        };
+        const actual = PRODUCTS[liveInfo.productId];
+        if (actual && actual.productType !== existing.productType) {
+          existing.productType = actual.productType;
+          existing.productName = actual.productName;
+        }
+      } catch (_) { /* keep stored data if API fails */ }
       return alreadyDeliveredResponse(res, existing);
     }
 
