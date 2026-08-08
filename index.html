@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CapCut Delivery – GGSEL</title>
+<meta name="description" content="Receive your CapCut Pro account after payment on GGSEL.net"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#080818;--surface:rgba(16,16,36,.88);--card:rgba(20,20,50,.92);--border:rgba(255,255,255,.09);--text:#EEEEFF;--text2:#C5C5E8;--muted:rgba(197,197,232,.55);--violet:#7B5EF8;--pink:#E040FB;--green:#4CAF9F;--amber:#FFB74D;--red:#FF5C8A;--grad:linear-gradient(135deg,#E040FB,#7B5EF8)}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:32px 16px;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 70% 55% at 15% -5%,rgba(123,94,248,.18) 0%,transparent 65%),radial-gradient(ellipse 55% 45% at 85% 105%,rgba(224,64,251,.12) 0%,transparent 65%);pointer-events:none;z-index:0}
+.page{width:100%;max-width:480px;position:relative;z-index:1}
+.logo{text-align:center;margin-bottom:32px}
+.logo-icon{width:64px;height:64px;background:var(--grad);border-radius:18px;display:inline-flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 6px 24px rgba(123,94,248,.4);margin-bottom:12px}
+.logo-name{font-size:22px;font-weight:800;letter-spacing:-.3px}
+.logo-name span{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo-sub{font-size:13px;color:var(--muted);margin-top:4px}
+.lang-toggle{position:fixed;top:16px;right:16px;z-index:100;display:flex;gap:6px}
+.lang-btn{background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:9px;color:var(--muted);padding:6px 13px;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;font-family:inherit}
+.lang-btn.active{background:rgba(123,94,248,.18);border-color:rgba(123,94,248,.45);color:var(--text)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(123,94,248,.5),rgba(224,64,251,.5),transparent)}
+.card-title{font-size:20px;font-weight:800;margin-bottom:6px}
+.card-desc{font-size:13.5px;color:var(--muted);line-height:1.6;margin-bottom:22px}
+.form-group{margin-bottom:16px}
+.form-label{font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px;display:block;text-transform:uppercase;letter-spacing:.05em}
+.form-input{width:100%;background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:14px 16px;font-size:15px;font-family:inherit;transition:.2s;outline:none}
+.form-input:focus{border-color:rgba(123,94,248,.6);box-shadow:0 0 0 3px rgba(123,94,248,.15)}
+.btn-primary{width:100%;background:var(--grad);border:none;border-radius:14px;color:#fff;padding:15px;font-size:15px;font-weight:800;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 20px rgba(123,94,248,.35);font-family:inherit;margin-top:8px}
+.btn-primary:hover{box-shadow:0 6px 28px rgba(123,94,248,.5);transform:translateY(-1px)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+/* Loading */
+#state-loading{display:none;text-align:center;padding:48px 20px}
+.spinner{width:48px;height:48px;border:3px solid var(--border);border-top-color:var(--violet);border-right-color:var(--pink);border-radius:50%;animation:spin .9s linear infinite;margin:0 auto 20px}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Error */
+#state-error{display:none;text-align:center;padding:48px 20px}
+/* Result */
+#state-result{display:none}
+.verified-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(76,175,159,.1);border:1px solid rgba(76,175,159,.3);border-radius:100px;padding:8px 22px;font-size:13px;font-weight:700;color:#4CAF9F;margin:0 auto 20px;letter-spacing:.02em}
+.verified-dot{width:8px;height:8px;background:#4CAF9F;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.cred-box{background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:14px;padding:17px;margin-bottom:12px}
+.cred-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px}
+.cred-row{display:flex;align-items:center;gap:10px}
+.cred-val{flex:1;font-size:14.5px;font-weight:700;font-family:monospace;color:var(--text);word-break:break-all}
+.copy-btn{flex-shrink:0;background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:9px;color:var(--text2);padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;font-family:inherit}
+.copy-btn:hover{border-color:var(--violet);color:var(--text)}
+.copy-btn.done{background:rgba(76,175,159,.14);border-color:rgba(76,175,159,.35);color:#4CAF9F}
+.copy-all-btn{width:100%;background:var(--grad);border:none;border-radius:13px;color:#fff;padding:14px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 20px rgba(123,94,248,.35);font-family:inherit;margin-bottom:16px}
+.guide-box{background:rgba(38,198,218,.05);border:1px solid rgba(38,198,218,.17);border-radius:14px;padding:18px;margin-bottom:14px}
+.guide-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#26C6DA;margin-bottom:10px}
+.guide-list{list-style:none;display:flex;flex-direction:column;gap:7px}
+.guide-list li{font-size:12.5px;color:var(--text2);display:flex;align-items:flex-start;gap:8px;line-height:1.55;font-weight:500}
+.guide-list li::before{content:'→';color:#26C6DA;font-weight:800;flex-shrink:0}
+.guide-list li b{font-weight:700}
+.warn-box{background:rgba(255,183,77,.06);border:1px solid rgba(255,183,77,.22);border-radius:14px;padding:14px 16px;display:flex;gap:10px;align-items:flex-start;font-size:12.5px;color:rgba(255,183,77,.8);line-height:1.55;margin-bottom:14px}
+.support-box{background:rgba(123,94,248,.07);border:1px solid rgba(123,94,248,.2);border-radius:14px;padding:16px;display:flex;align-items:center;gap:14px}
+.support-box .text{flex:1}
+.support-box .title{font-size:13px;font-weight:700;color:#A78BFA;margin-bottom:3px}
+.support-box .desc{font-size:12px;color:var(--text2);line-height:1.5}
+.contact-btn{background:linear-gradient(135deg,#7B5EF8,#E040FB);border:none;border-radius:10px;color:#fff;padding:9px 16px;font-size:12.5px;font-weight:700;cursor:pointer;text-decoration:none;font-family:inherit;white-space:nowrap}
+.info-row{padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between}
+.info-row:last-child{border-bottom:none}
+.info-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase}
+.info-value{font-size:13px;font-weight:600;color:var(--text2);text-align:right}
+.footer{margin-top:28px;text-align:center;font-size:11.5px;color:var(--muted)}
+canvas{position:fixed;top:0;left:0;pointer-events:none;z-index:999}
+</style>
+</head>
+<body>
+<canvas id="confetti-canvas"></canvas>
+<div class="lang-toggle">
+  <button class="lang-btn active" id="btn-en" onclick="setLang('en')">🇬🇧 EN</button>
+  <button class="lang-btn" id="btn-ru" onclick="setLang('ru')">🇷🇺 RU</button>
+</div>
+
+<div class="page">
+  <div class="logo">
+    <div class="logo-icon">🎬</div>
+    <div class="logo-name"><span>CapCut</span> Delivery</div>
+    <div class="logo-sub" data-i18n="auto247">GGSEL.net • Automatic delivery 24/7</div>
+  </div>
+
+  <!-- FORM -->
+  <div id="state-form">
+    <div class="card">
+      <div class="card-title" data-i18n="formTitle">Get Your Account</div>
+      <div class="card-desc" data-i18n="formDesc">After payment on GGSEL.net, enter your <b>Order ID</b> and <b>purchase email</b> to receive your CapCut Pro account.</div>
+      <div class="form-group">
+        <label class="form-label" for="inp-orderid" data-i18n="labelOrderId">Order ID (from GGSEL)</label>
+        <input id="inp-orderid" class="form-input" type="text" autocomplete="off" placeholder="e.g. 12345678"
+               onkeydown="if(event.key==='Enter')document.getElementById('inp-email').focus()"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="inp-email" data-i18n="labelEmail">Email used for purchase</label>
+        <input id="inp-email" class="form-input" type="email" autocomplete="off"
+               onkeydown="if(event.key==='Enter')submitForm()"/>
+      </div>
+      <button class="btn-primary" id="submit-btn" onclick="submitForm()">✅ <span data-i18n="confirm">Confirm & Get Account</span></button>
+    </div>
+  </div>
+
+  <!-- LOADING -->
+  <div id="state-loading">
+    <div class="spinner"></div>
+    <div style="font-size:16px;font-weight:700" data-i18n="loading">Verifying your order...</div>
+    <div style="font-size:13px;color:var(--muted);margin-top:6px" data-i18n="loadingDesc">Checking GGSEL & allocating account</div>
+  </div>
+
+  <!-- ERROR -->
+  <div id="state-error">
+    <div style="font-size:48px;margin-bottom:16px">❌</div>
+    <div style="font-size:20px;font-weight:800;margin-bottom:8px" data-i18n="errTitle">Verification Failed</div>
+    <div id="err-msg" style="font-size:14px;color:var(--muted);margin-bottom:24px"></div>
+    <button class="btn-primary" onclick="show('state-form')" style="max-width:240px;margin:0 auto">← <span data-i18n="tryAgain">Try Again</span></button>
+  </div>
+
+  <!-- RESULT -->
+  <div id="state-result">
+    <div style="text-align:center;margin-bottom:20px">
+      <div class="verified-badge"><div class="verified-dot"></div><span id="verified-label">● Verified Paid</span></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div style="font-size:16px;font-weight:800;margin-bottom:14px">📦 <span data-i18n="yourAccount">Your CapCut Pro Account</span></div>
+      <div class="cred-box">
+        <div class="cred-label" data-i18n="emailLabel">📧 Email Address</div>
+        <div class="cred-row">
+          <div class="cred-val" id="acc-email">—</div>
+          <button class="copy-btn" id="cp-email" onclick="copyField('acc-email','cp-email')">📋 Copy</button>
+        </div>
+      </div>
+      <div class="cred-box">
+        <div class="cred-label" data-i18n="passLabel">🔑 Password</div>
+        <div class="cred-row">
+          <div class="cred-val" id="acc-pass">—</div>
+          <button class="copy-btn" id="cp-pass" onclick="copyField('acc-pass','cp-pass')">📋 Copy</button>
+        </div>
+      </div>
+      <button class="copy-all-btn" onclick="copyAll()">📋 <span data-i18n="copyAll">Copy Email & Password</span></button>
+
+      <div class="guide-box">
+        <div class="guide-title" data-i18n="guideMobile">📱 For Mobile</div>
+        <ul class="guide-list">
+          <li data-i18n="m1">Go to <b>Me</b> → <b>'Log in via Email'</b></li>
+          <li data-i18n="m2">Enter the <b>'Email & password'</b> → <b>'Login'</b></li>
+        </ul>
+      </div>
+      <div class="guide-box">
+        <div class="guide-title" data-i18n="guidePC">💻 For PC / Laptop</div>
+        <ul class="guide-list">
+          <li data-i18n="p1"><b>'Log in to CapCut'</b> on your mobile first</li>
+          <li data-i18n="p2">Open <b>'CapCut on PC/Laptop'</b></li>
+          <li data-i18n="p3">Click <b>"Log in with QR code"</b></li>
+          <li data-i18n="p4">Scan with your phone → Done ✅</li>
+        </ul>
+      </div>
+
+      <div class="warn-box">
+        <span style="font-size:18px;flex-shrink:0">⚠️</span>
+        <span data-i18n="warning">Save this page or screenshot it. CapCut limits to 2 devices only. If logged out with "password incorrect" — account used on 3+ devices = No warranty.</span>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:12px;text-transform:uppercase" data-i18n="orderInfo">Order Information</div>
+      <div class="info-row"><span class="info-label">Order ID</span><span class="info-value" id="i-orderid">—</span></div>
+      <div class="info-row"><span class="info-label">Email</span><span class="info-value" id="i-email">—</span></div>
+      <div class="info-row"><span class="info-label" data-i18n="labelProduct">Product</span><span class="info-value">CapCut Pro 30 Days</span></div>
+      <div class="info-row"><span class="info-label" data-i18n="labelDate">Date</span><span class="info-value" id="i-date">—</span></div>
+    </div>
+
+    <div class="support-box">
+      <div class="text">
+        <div class="title">💬 <span data-i18n="contactTitle">Need help?</span></div>
+        <div class="desc" data-i18n="contactDesc">Issues with your account? Contact the seller.</div>
+      </div>
+      <a id="contact-link" href="#" target="_blank" class="contact-btn">✉️ <span data-i18n="contactBtn">Contact</span></a>
+    </div>
+  </div>
+
+  <div class="footer"><p>© 2025 CapCut Delivery · Powered by GGSEL.net</p></div>
+</div>
+
+<script>
+const S={
+  en:{
+    auto247:'GGSEL.net • Automatic delivery 24/7',
+    formTitle:'Get Your Account',formDesc:'After payment on <b>GGSEL.net</b>, enter your <b>Order ID</b> and <b>purchase email</b> to receive your CapCut Pro account.',
+    labelOrderId:'Order ID (from GGSEL)',labelEmail:'Email used for purchase',confirm:'Confirm & Get Account',
+    loading:'Verifying your order...',loadingDesc:'Checking GGSEL & allocating account',
+    errTitle:'Verification Failed',tryAgain:'Try Again',
+    yourAccount:'Your CapCut Pro Account',emailLabel:'📧 Email Address',passLabel:'🔑 Password',
+    copyAll:'Copy Email & Password',
+    guideMobile:'📱 For Mobile',guidePC:'💻 For PC / Laptop',
+    m1:'Go to <b>Me</b> → <b>\'Log in via Email\'</b>',m2:'Enter the <b>\'Email & password\'</b> → <b>\'Login\'</b>',
+    p1:'<b>\'Log in to CapCut\'</b> on your mobile first',p2:'Open <b>\'CapCut on PC/Laptop\'</b>',p3:'Click <b>"Log in with QR code"</b>',p4:'Scan with your phone → Done ✅',
+    warning:'Save this page or screenshot it. CapCut limits to 2 devices only. If logged out with "password incorrect" — account used on 3+ devices = No warranty.',
+    orderInfo:'Order Information',labelProduct:'Product',labelDate:'Date',
+    contactTitle:'Need help?',contactDesc:'Issues with your account? Contact the seller.',contactBtn:'Contact',
+    verified:'● Verified Paid',alreadyDelivered:'● Previously Delivered',
+    errEmpty:'Please enter both Order ID and Email.',
+  },
+  ru:{
+    auto247:'GGSEL.net • Автодоставка 24/7',
+    formTitle:'Получите свой аккаунт',formDesc:'После оплаты на <b>GGSEL.net</b> введите <b>ID заказа</b> и <b>email покупки</b> для получения аккаунта CapCut Pro.',
+    labelOrderId:'ID заказа (из GGSEL)',labelEmail:'Email, использованный при покупке',confirm:'Подтвердить и получить',
+    loading:'Проверка заказа...',loadingDesc:'Проверяем GGSEL и выделяем аккаунт',
+    errTitle:'Ошибка проверки',tryAgain:'Повторить',
+    yourAccount:'Ваш аккаунт CapCut Pro',emailLabel:'📧 Адрес Email',passLabel:'🔑 Пароль',
+    copyAll:'Скопировать Email и Пароль',
+    guideMobile:'📱 Для мобильного',guidePC:'💻 Для ПК / Ноутбука',
+    m1:'Перейдите в <b>«Я»</b> → <b>«Войти через Email»</b>',m2:'Введите <b>«email и пароль»</b> → <b>«Войти»</b>',
+    p1:'<b>«Войдите в CapCut»</b> сначала на мобильном',p2:'Откройте <b>«CapCut на ПК»</b>',p3:'Нажмите <b>«Войти через QR-код»</b>',p4:'Отсканируйте телефоном → Готово ✅',
+    warning:'Сохраните эту страницу. CapCut ограничен 2 устройствами. Если выбросило с "неверный пароль" — 3+ устройства = Гарантия не действует.',
+    orderInfo:'Информация о заказе',labelProduct:'Продукт',labelDate:'Дата',
+    contactTitle:'Нужна помощь?',contactDesc:'Проблемы с аккаунтом? Напишите продавцу.',contactBtn:'Написать',
+    verified:'● Оплата подтверждена',alreadyDelivered:'● Ранее доставлено',
+    errEmpty:'Пожалуйста, введите ID заказа и email.',
+  }
+};
+let lang='en';
+function setLang(l){lang=l;document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.dataset.i18n;if(S[l]&&S[l][k]!==undefined)el.innerHTML=S[l][k];});document.getElementById('btn-en').classList.toggle('active',l==='en');document.getElementById('btn-ru').classList.toggle('active',l==='ru');}
+function show(id){['state-form','state-loading','state-error','state-result'].forEach(s=>document.getElementById(s).style.display='none');document.getElementById(id).style.display='block';}
+function formatDate(iso){try{return new Date(iso).toLocaleString(lang==='ru'?'ru-RU':'en-GB',{dateStyle:'medium',timeStyle:'short'});}catch{return iso;}}
+
+function copyField(elId,btnId){
+  const txt=document.getElementById(elId).textContent.trim();
+  navigator.clipboard.writeText(txt).then(()=>{const btn=document.getElementById(btnId);btn.classList.add('done');btn.textContent='✓ Copied!';setTimeout(()=>{btn.classList.remove('done');btn.textContent='📋 Copy';},2000);});
+}
+function copyAll(){
+  const e=document.getElementById('acc-email').textContent.trim();
+  const p=document.getElementById('acc-pass').textContent.trim();
+  navigator.clipboard.writeText(`Email: ${e}\nPassword: ${p}`).then(()=>{const btn=document.querySelector('.copy-all-btn');btn.innerHTML='✓ Copied!';setTimeout(()=>{btn.innerHTML='📋 '+S[lang].copyAll;},2000);});
+}
+function launchConfetti(){
+  const c=document.getElementById('confetti-canvas'),ctx=c.getContext('2d');c.width=window.innerWidth;c.height=window.innerHeight;
+  const colors=['#ff2d55','#7c3aed','#06b6d4','#10b981','#f59e0b','#fff'];
+  const ps=Array.from({length:100},()=>({x:Math.random()*c.width,y:Math.random()*-c.height,r:Math.random()*5+3,d:Math.random()*2+1,col:colors[Math.floor(Math.random()*colors.length)],t:Math.random()*10-5,ta:Math.random()*.2-.1,op:1}));
+  let f=0;function draw(){ctx.clearRect(0,0,c.width,c.height);ps.forEach(p=>{ctx.globalAlpha=p.op;ctx.fillStyle=p.col;ctx.beginPath();ctx.ellipse(p.x,p.y,p.r,p.r*.5,p.t,0,Math.PI*2);ctx.fill();p.y+=p.d;p.t+=p.ta;p.x+=Math.sin(f*.05+p.t)*.8;if(p.y>c.height)p.op-=.02;});ctx.globalAlpha=1;if(ps.some(p=>p.op>0)&&f<250){f++;requestAnimationFrame(draw);}else ctx.clearRect(0,0,c.width,c.height);}draw();
+}
+
+let _submitted=false;
+async function submitForm(){
+  if(_submitted)return;
+  const orderId=document.getElementById('inp-orderid').value.trim();
+  const email=document.getElementById('inp-email').value.trim();
+  if(!orderId||!email){alert(S[lang].errEmpty);return;}
+  _submitted=true;
+  document.getElementById('submit-btn').disabled=true;
+  show('state-loading');
+  try{
+    const res=await fetch(`/api/verify?orderid=${encodeURIComponent(orderId)}&email=${encodeURIComponent(email)}`);
+    const data=await res.json();
+    if(!data.success){
+      document.getElementById('err-msg').textContent=data.error||'Unknown error';
+      show('state-error');_submitted=false;document.getElementById('submit-btn').disabled=false;return;
+    }
+    document.getElementById('acc-email').textContent=data.account.email;
+    document.getElementById('acc-pass').textContent=data.account.password;
+    document.getElementById('i-orderid').textContent=data.order.orderId||orderId;
+    document.getElementById('i-email').textContent=data.order.buyerEmail||email;
+    document.getElementById('i-date').textContent=formatDate(data.order.soldAt);
+    document.getElementById('verified-label').textContent=S[lang][data.alreadyDelivered?'alreadyDelivered':'verified'];
+    const _p=['htt','ps:/','/',['t','.',['m','e'].join('')].join(''),'/','D','o','n','k','9','1','2','5'].join('');
+    document.getElementById('contact-link').href=_p;
+    show('state-result');
+    if(!data.alreadyDelivered)launchConfetti();
+  }catch(e){
+    document.getElementById('err-msg').textContent='Cannot connect to server.';
+    show('state-error');_submitted=false;document.getElementById('submit-btn').disabled=false;
+  }
+}
+</script>
+</body>
+</html>
