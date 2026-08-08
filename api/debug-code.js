@@ -1,7 +1,6 @@
 /**
  * /api/debug-code?code=XXX
- * TEMPORARY — test GGSEL API endpoints for unique code verification
- * DELETE after debugging!
+ * TEMPORARY — test GGSEL API endpoints for unique code lookup
  */
 const { getToken } = require('../lib/ggsel');
 const fetch = require('node-fetch');
@@ -17,41 +16,40 @@ module.exports = async (req, res) => {
     const token = await getToken();
     const results = {};
 
-    // Try 1: POST /goods/check with unique_code
-    try {
-      const r1 = await fetch(`${GGSEL_API}/goods/check`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ unique_code: code }),
-      });
-      results['POST_goods_check'] = await r1.json();
-    } catch (e) { results['POST_goods_check'] = { error: e.message }; }
+    // Try purchase list endpoints
+    const endpoints = [
+      { name: 'GET_purchase_list', url: `${GGSEL_API}/purchase/list`, method: 'GET' },
+      { name: 'GET_purchases', url: `${GGSEL_API}/purchases`, method: 'GET' },
+      { name: 'GET_orders', url: `${GGSEL_API}/orders`, method: 'GET' },
+      { name: 'GET_seller_purchases', url: `${GGSEL_API}/seller/purchases`, method: 'GET' },
+      { name: 'POST_purchase_list', url: `${GGSEL_API}/purchase/list`, method: 'POST', body: { unique_code: code } },
+      { name: 'POST_purchase_search', url: `${GGSEL_API}/purchase/search`, method: 'POST', body: { unique_code: code } },
+      { name: 'GET_purchase_list_item5450773', url: `${GGSEL_API}/purchase/list/5450773`, method: 'GET' },
+      { name: 'GET_purchase_list_item5065211', url: `${GGSEL_API}/purchase/list/5065211`, method: 'GET' },
+    ];
 
-    // Try 2: GET /purchase/info/{unique_code}
-    try {
-      const r2 = await fetch(`${GGSEL_API}/purchase/info/${code}`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-      });
-      results['GET_purchase_info'] = await r2.json();
-    } catch (e) { results['GET_purchase_info'] = { error: e.message }; }
-
-    // Try 3: GET /goods/check/{unique_code}
-    try {
-      const r3 = await fetch(`${GGSEL_API}/goods/check/${code}`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-      });
-      results['GET_goods_check_path'] = await r3.json();
-    } catch (e) { results['GET_goods_check_path'] = { error: e.message }; }
-
-    // Try 4: POST /goods/check with "code" key
-    try {
-      const r4 = await fetch(`${GGSEL_API}/goods/check`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ code: code }),
-      });
-      results['POST_goods_check_code_key'] = await r4.json();
-    } catch (e) { results['POST_goods_check_code_key'] = { error: e.message }; }
+    for (const ep of endpoints) {
+      try {
+        const opts = {
+          method: ep.method,
+          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        };
+        if (ep.body) opts.body = JSON.stringify(ep.body);
+        const r = await fetch(ep.url, opts);
+        const text = await r.text();
+        try {
+          const json = JSON.parse(text);
+          // If it's a list, only show first 2 items + total count
+          if (json.content && Array.isArray(json.content)) {
+            results[ep.name] = { retval: json.retval, total: json.content.length, first2: json.content.slice(0, 2) };
+          } else {
+            results[ep.name] = json;
+          }
+        } catch {
+          results[ep.name] = { status: r.status, text: text.substring(0, 200) };
+        }
+      } catch (e) { results[ep.name] = { error: e.message }; }
+    }
 
     return res.status(200).json(results);
   } catch (e) {
