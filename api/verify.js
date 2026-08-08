@@ -109,10 +109,24 @@ module.exports = async (req, res) => {
       });
     }
 
-    /* ── 4. Get account from stock ───────────────────────────────── */
-    const sheetName   = 'CapCut Pro 1 Tháng';
-    const productType = '1m';
-    const productName = 'CapCut Pro 1 Month (GGSEL)';
+    /* ── 4. Detect product & get account from stock ────────────────── */
+    const PRODUCTS = {
+      '5450773': { sheetName: 'CapCut Pro 7 Ngày',  productType: '7d', productName: 'CapCut Pro 7 Days (GGSEL)' },
+      '5065211': { sheetName: 'CapCut Pro 1 Tháng', productType: '1m', productName: 'CapCut Pro 1 Month (GGSEL)' },
+    };
+
+    // Detect by product ID first, then by name keywords, default to 1m
+    let product = PRODUCTS[orderInfo.productId];
+    if (!product) {
+      const name = (orderInfo.productName || '').toLowerCase();
+      if (/\b7\b|7.?day|7.?д/.test(name)) {
+        product = PRODUCTS['5450773'];
+      } else {
+        product = PRODUCTS['5065211']; // default 1m
+      }
+    }
+
+    const { sheetName, productType, productName } = product;
 
     const account = await getNextAvailableAccount(sheetName);
     if (!account) {
