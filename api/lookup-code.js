@@ -1,15 +1,9 @@
 /**
  * /api/lookup-code?code=UUID
- * Look up order ID by GGSEL unique code from the CodeMap sheet.
- * Then auto-verify and deliver the account.
+ * Auto-delivers account by looking up order ID from CodeMap tab.
  */
 const { verifyOrder } = require('../lib/ggsel');
-const {
-  getNextAvailableAccount,
-  deleteAccountRow,
-  saveOrder,
-  findOrderByCode,
-} = require('../lib/sheets');
+const { getNextAvailableAccount, deleteAccountRow, saveOrder, findOrderByCode } = require('../lib/sheets');
 const { google } = require('googleapis');
 
 const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID;
@@ -18,19 +12,12 @@ function getAuth() {
   let credentials;
   try { credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT || '{}'); }
   catch { throw new Error('Invalid GOOGLE_SERVICE_ACCOUNT JSON'); }
-  return new google.auth.GoogleAuth({
-    credentials,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
-}
-
-async function getSheetsClient() {
-  const auth = await getAuth();
-  return google.sheets({ version: 'v4', auth });
+  return new google.auth.GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/spreadsheets'] });
 }
 
 async function findOrderIdByUniqueCode(uniqueCode) {
-  const sheets = await getSheetsClient();
+  const auth = await getAuth();
+  const sheets = google.sheets({ version: 'v4', auth });
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
@@ -38,12 +25,10 @@ async function findOrderIdByUniqueCode(uniqueCode) {
     });
     const rows = res.data.values || [];
     for (const row of rows) {
-      if ((row[0] || '').trim() === uniqueCode.trim()) {
-        return (row[1] || '').trim();
-      }
+      if ((row[0] || '').trim() === uniqueCode.trim()) return (row[1] || '').trim();
     }
   } catch (e) {
-    console.log('[lookup-code] CodeMap read error:', e.message);
+    console.log('[lookup-code] CodeMap not found yet:', e.message);
   }
   return null;
 }
@@ -58,82 +43,53 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const uniqueCode = (req.query.code || '').trim();
-  if (!uniqueCode) {
-    return res.status(400).json({ success: false, error: 'Missing unique code.' });
-  }
+  if (!uniqueCode) return res.status(400).json({ success: false, error: 'Missing code.' });
 
   try {
-    // Step 1: Look up order ID from CodeMap
+    // Find order ID from CodeMap
     const orderId = await findOrderIdByUniqueCode(uniqueCode);
     if (!orderId) {
-      return res.status(404).json({
-        success: false,
-        needOrderId: true,
-        error: 'Order not mapped yet. Please enter your Order Number manually.',
-      });
+      return res.status(404).json({ success: false, needOrderId: true, error: 'Code not mapped yet.' });
     }
 
-    // Step 2: Check if already delivered
+    // Check already delivered
     const orderKey = `ggsel-${orderId}`;
     const existing = await findOrderByCode(orderKey);
     if (existing) {
       return res.status(200).json({
-        success: true,
-        alreadyDelivered: true,
+        success: true, alreadyDelivered: true,
         account: { email: existing.accountEmail, password: existing.accountPassword },
-        order: {
-          orderId: existing.orderId,
-          buyerEmail: existing.buyerEmail,
-          soldAt: existing.soldAt,
-          productType: existing.productType,
-          productName: existing.productName,
-        },
+        order: { orderId: existing.orderId, buyerEmail: existing.buyerEmail, soldAt: existing.soldAt, productType: existing.productType, productName: existing.productName },
       });
     }
 
-    // Step 3: Verify via GGSEL API
+    // Verify via GGSEL API
     const orderInfo = await verifyOrder(orderId);
-    if (!orderInfo.isPaid) {
-      return res.status(400).json({ success: false, error: 'Order not paid.' });
-    }
+    if (!orderInfo.isPaid) return res.status(400).json({ success: false, error: 'Order not paid.' });
 
-    // Step 4: Detect product and deliver
-    let product = PRODUCTS[orderInfo.productId] || PRODUCTS['5065211'];
+    // Detect product & deliver
+    const product = PRODUCTS[orderInfo.productId] || PRODUCTS['5065211'];
     const { sheetName, productType, productName } = product;
 
     const account = await getNextAvailableAccount(sheetName);
-    if (!account) {
-      return res.status(503).json({ success: false, outOfStock: true, productName, error: 'Out of stock.' });
-    }
+    if (!account) return res.status(503).json({ success: false, outOfStock: true, productName, error: 'Out of stock.' });
 
-    // Step 5: Save and deliver
     await deleteAccountRow(sheetName, account.rowIndex);
     await saveOrder({
-      uniqueCode: orderKey,
-      buyerEmail: orderInfo.buyerEmail,
-      accountEmail: account.email,
-      accountPassword: account.password,
-      orderId,
-      productType,
-      productName,
+      uniqueCode: orderKey, buyerEmail: orderInfo.buyerEmail,
+      accountEmail: account.email, accountPassword: account.password,
+      orderId, productType, productName,
     });
 
-    console.log(`[lookup-code] Auto-delivered ${productName} for order ${orderId} via uniqueCode ${uniqueCode}`);
+    console.log(`[lookup-code] Delivered ${productName} for order ${orderId}`);
 
     return res.status(200).json({
-      success: true,
-      alreadyDelivered: false,
+      success: true, alreadyDelivered: false,
       account: { email: account.email, password: account.password },
-      order: {
-        orderId,
-        buyerEmail: orderInfo.buyerEmail,
-        soldAt: new Date().toISOString(),
-        productType,
-        productName,
-      },
+      order: { orderId, buyerEmail: orderInfo.buyerEmail, soldAt: new Date().toISOString(), productType, productName },
     });
   } catch (err) {
     console.error('[lookup-code] Error:', err.message);
-    return res.status(500).json({ success: false, error: 'Server error. Try again.' });
+    return res.status(500).json({ success: false, error: 'Server error.' });
   }
 };

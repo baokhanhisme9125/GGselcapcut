@@ -1,10 +1,8 @@
 /**
  * /api/webhook-ggsel
  * Receives GGSEL purchase notifications.
- * Stores unique_code → order_id mapping so buyers can auto-receive their account.
- * 
- * GGSEL Custom Notification should point to:
- * https://g-gselcapcut.vercel.app/api/webhook-ggsel
+ * Stores unique_code → order_id mapping in existing spreadsheet.
+ * Auto-creates "CodeMap" tab if it doesn't exist.
  */
 const { google } = require('googleapis');
 
@@ -25,62 +23,53 @@ async function getSheetsClient() {
   return google.sheets({ version: 'v4', auth });
 }
 
+async function ensureSheetExists(sheets, sheetName) {
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const exists = meta.data.sheets.some(s => s.properties.title === sheetName);
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: { requests: [{ addSheet: { properties: { title: sheetName } } }] },
+    });
+  }
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // Log EVERYTHING for debugging (first few calls)
   const body = req.body || {};
   const query = req.query || {};
-  const allData = { method: req.method, query, body, headers: req.headers };
 
-  console.log('[webhook-ggsel] Received:', JSON.stringify(allData));
+  // Log everything for debugging
+  console.log('[webhook-ggsel] body:', JSON.stringify(body));
+  console.log('[webhook-ggsel] query:', JSON.stringify(query));
 
-  // Try to extract order info from various possible formats
-  const orderId = body.content_id || body.invoice_id || body.id || query.content_id || query.id || '';
-  const uniqueCode = body.unique_code || body.uniquecode || body.name || query.uniquecode || query.unique_code || '';
+  // Extract order info from various possible GGSEL formats
+  const orderId    = String(body.content_id || body.invoice_id || body.id || query.content_id || query.id || '').trim();
+  const uniqueCode = String(body.unique_code || body.uniquecode || body.name || query.uniquecode || query.unique_code || '').trim();
 
-  // Store the raw webhook data to a "Webhooks" sheet for debugging
-  try {
-    const sheets = await getSheetsClient();
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
-      range: 'Webhooks!A:D',
-      valueInputOption: 'USER_ENTERED',
-      requestBody: {
-        values: [[
-          new Date().toISOString(),
-          String(orderId),
-          String(uniqueCode),
-          JSON.stringify(allData).substring(0, 5000),
-        ]],
-      },
-    });
-  } catch (e) {
-    console.log('[webhook-ggsel] Sheet save error (create "Webhooks" tab?):', e.message);
-  }
-
-  // If we got both orderId and uniqueCode, store the mapping
+  // If we have both, save the mapping
   if (orderId && uniqueCode) {
     try {
       const sheets = await getSheetsClient();
+      await ensureSheetExists(sheets, 'CodeMap');
       await sheets.spreadsheets.values.append({
         spreadsheetId: SPREADSHEET_ID,
         range: 'CodeMap!A:C',
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: [[
-            String(uniqueCode),
-            String(orderId),
-            new Date().toISOString(),
-          ]],
+          values: [[ uniqueCode, orderId, new Date().toISOString() ]],
         },
       });
-      console.log(`[webhook-ggsel] Mapped ${uniqueCode} → ${orderId}`);
+      console.log(`[webhook-ggsel] Mapped uniqueCode=${uniqueCode} → orderId=${orderId}`);
     } catch (e) {
-      console.log('[webhook-ggsel] CodeMap save error (create "CodeMap" tab?):', e.message);
+      console.error('[webhook-ggsel] Save error:', e.message);
     }
+  } else {
+    console.log(`[webhook-ggsel] Missing data: orderId="${orderId}", uniqueCode="${uniqueCode}"`);
+    console.log('[webhook-ggsel] Full raw body:', JSON.stringify({ body, query }));
   }
 
   return res.status(200).json({ ok: true });
