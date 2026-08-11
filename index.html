@@ -267,23 +267,45 @@ function submitForm(){
     return;
   }
 
-  // Case 2: ?uniquecode=UUID or ?orderid=&uniquecode=UUID (from GGSEL "By link")
-  // → show form with ONLY Order ID field + hint message
+  // Case 2: ?uniquecode=UUID (from GGSEL "By link")
   if(uniquecode){
-    // Hide email field - not needed for GGSEL
-    const emailGroup=document.getElementById('inp-email');
-    if(emailGroup && emailGroup.parentElement){
-      emailGroup.parentElement.style.display='none';
-    }
+    // Show loading state
+    document.getElementById('state-form').style.display='none';
+    document.getElementById('state-loading').style.display='block';
 
-    // Add hint message at top of form
-    const hint=document.createElement('div');
-    hint.style.cssText='text-align:center;color:#7DD3FC;font-size:13px;margin-bottom:16px;font-weight:600;line-height:1.6;';
-    hint.innerHTML=lang==='ru'
-      ? '🔗 Введите <b>номер заказа</b> с GGSEL для получения аккаунта<br><span style="font-size:11px;color:#94A3B8">(номер заказа указан в email от GGSEL)</span>'
-      : '🔗 Enter your <b>Order Number</b> from GGSEL to get your account<br><span style="font-size:11px;color:#94A3B8">(check your GGSEL purchase email for the order number)</span>';
-    const form=document.getElementById('state-form');
-    if(form&&form.firstChild) form.insertBefore(hint,form.firstChild);
+    // Try auto-deliver via lookup-code API
+    fetch(`/api/lookup-code?code=${encodeURIComponent(uniquecode)}`)
+      .then(r=>r.json())
+      .then(data=>{
+        if(data.success){
+          // Auto-delivery worked! Redirect to delivery page to show result
+          const oid=data.order.orderId||'';
+          window.location.replace(`/delivery.html?orderid=${encodeURIComponent(oid)}`);
+        } else {
+          // No mapping found → show form with only Order Number field
+          document.getElementById('state-loading').style.display='none';
+          document.getElementById('state-form').style.display='block';
+
+          // Hide email field
+          const emailGroup=document.getElementById('inp-email');
+          if(emailGroup && emailGroup.parentElement) emailGroup.parentElement.style.display='none';
+
+          // Change description
+          const desc=document.querySelector('.card-desc');
+          if(desc) desc.innerHTML=lang==='ru'
+            ? '🔗 Введите <b>номер заказа</b> из email GGSEL для получения аккаунта'
+            : '🔗 Enter your <b>Order Number</b> from your GGSEL email to get your account';
+
+          // Update placeholder
+          const inp=document.getElementById('inp-orderid');
+          if(inp) inp.placeholder='e.g. 43522210';
+        }
+      })
+      .catch(()=>{
+        // Network error → show form
+        document.getElementById('state-loading').style.display='none';
+        document.getElementById('state-form').style.display='block';
+      });
   }
 })();
 </script>
