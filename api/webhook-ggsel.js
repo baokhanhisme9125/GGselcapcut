@@ -1,9 +1,12 @@
 /**
  * /api/webhook-ggsel
- * Receives GGSEL purchase notifications.
- * Stores unique_code → order_id mapping in existing spreadsheet.
- * Auto-creates "CodeMap" tab if it doesn't exist.
+ * GGSEL sends GET request with:
+ *   id_i={order_id}, id_d={product_id}, amount, email1, sha256, etc.
+ * 
+ * We use id_i to call GGSEL API → get purchase.name (=uniqueCode UUID)
+ * Then store mapping: uniqueCode → orderId in CodeMap tab (auto-created)
  */
+const { verifyOrder } = require('../lib/ggsel');
 const { google } = require('googleapis');
 
 const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID;
@@ -18,19 +21,19 @@ function getAuth() {
   });
 }
 
-async function getSheetsClient() {
-  const auth = await getAuth();
-  return google.sheets({ version: 'v4', auth });
-}
-
-async function ensureSheetExists(sheets, sheetName) {
-  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
-  const exists = meta.data.sheets.some(s => s.properties.title === sheetName);
-  if (!exists) {
-    await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: SPREADSHEET_ID,
-      requestBody: { requests: [{ addSheet: { properties: { title: sheetName } } }] },
-    });
+async function ensureCodeMapSheet(sheets) {
+  try {
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+    const exists = meta.data.sheets.some(s => s.properties.title === 'CodeMap');
+    if (!exists) {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: SPREADSHEET_ID,
+        requestBody: { requests: [{ addSheet: { properties: { title: 'CodeMap' } } }] },
+      });
+      console.log('[webhook-ggsel] Created CodeMap tab');
+    }
+  } catch (e) {
+    console.log('[webhook-ggsel] ensureCodeMapSheet error:', e.message);
   }
 }
 
@@ -39,37 +42,52 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const body = req.body || {};
+  // GGSEL sends GET params
   const query = req.query || {};
+  const body  = req.body  || {};
 
-  // Log everything for debugging
-  console.log('[webhook-ggsel] body:', JSON.stringify(body));
   console.log('[webhook-ggsel] query:', JSON.stringify(query));
+  console.log('[webhook-ggsel] body:', JSON.stringify(body));
 
-  // Extract order info from various possible GGSEL formats
-  const orderId    = String(body.content_id || body.invoice_id || body.id || query.content_id || query.id || '').trim();
-  const uniqueCode = String(body.unique_code || body.uniquecode || body.name || query.uniquecode || query.unique_code || '').trim();
+  // id_i = order/invoice ID from GGSEL notification
+  const orderId = String(
+    query.id_i || query.content_id || query.invoice_id ||
+    body.id_i  || body.content_id  || body.invoice_id || ''
+  ).trim();
 
-  // If we have both, save the mapping
-  if (orderId && uniqueCode) {
-    try {
-      const sheets = await getSheetsClient();
-      await ensureSheetExists(sheets, 'CodeMap');
+  if (!orderId || !/^\d+$/.test(orderId)) {
+    console.log('[webhook-ggsel] No valid orderId found in:', { query, body });
+    return res.status(200).json({ ok: true, note: 'no orderId' });
+  }
+
+  try {
+    // Call GGSEL API to get purchase details → purchase.name = uniqueCode UUID
+    const orderInfo = await verifyOrder(orderId);
+    const uniqueCode = (orderInfo.raw && orderInfo.raw.name) ? String(orderInfo.raw.name).trim() : '';
+
+    console.log(`[webhook-ggsel] orderId=${orderId}, uniqueCode=${uniqueCode}, productId=${orderInfo.productId}`);
+
+    if (uniqueCode) {
+      const auth = await getAuth();
+      const sheets = google.sheets({ version: 'v4', auth });
+      await ensureCodeMapSheet(sheets);
       await sheets.spreadsheets.values.append({
         spreadsheetId: SPREADSHEET_ID,
-        range: 'CodeMap!A:C',
+        range: 'CodeMap!A:D',
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: [[ uniqueCode, orderId, new Date().toISOString() ]],
+          values: [[
+            uniqueCode,
+            orderId,
+            orderInfo.productId || '',
+            new Date().toISOString(),
+          ]],
         },
       });
-      console.log(`[webhook-ggsel] Mapped uniqueCode=${uniqueCode} → orderId=${orderId}`);
-    } catch (e) {
-      console.error('[webhook-ggsel] Save error:', e.message);
+      console.log(`[webhook-ggsel] ✅ Mapped ${uniqueCode} → ${orderId}`);
     }
-  } else {
-    console.log(`[webhook-ggsel] Missing data: orderId="${orderId}", uniqueCode="${uniqueCode}"`);
-    console.log('[webhook-ggsel] Full raw body:', JSON.stringify({ body, query }));
+  } catch (e) {
+    console.error('[webhook-ggsel] Error:', e.message);
   }
 
   return res.status(200).json({ ok: true });
