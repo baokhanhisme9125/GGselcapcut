@@ -255,14 +255,11 @@ function submitForm(){
 // Auto-redirect logic
 (function(){
   const params=new URLSearchParams(window.location.search);
-  const orderid=params.get('orderid');
-  if(!orderid) return;
+  const orderid=(params.get('orderid')||'').trim();
+  const uniquecode=(params.get('uniquecode')||'').trim();
 
-  // Check if orderid is a numeric Order ID (auto-deliver) or UUID from GGSEL (show form)
-  const isNumeric=/^\d+$/.test(orderid);
-
-  if(isNumeric){
-    // Real Order ID → auto-redirect to delivery
+  // Case 1: ?orderid=43522210 (numeric) → auto-redirect to delivery
+  if(orderid && /^\d+$/.test(orderid)){
     const email=params.get('email')||'';
     let url=`/delivery.html?orderid=${encodeURIComponent(orderid)}`;
     if(email) url+=`&email=${encodeURIComponent(email)}`;
@@ -270,15 +267,26 @@ function submitForm(){
     return;
   }
 
-  // UUID from GGSEL "By link" → show form with hint
-  const hint=document.createElement('div');
-  hint.style.cssText='text-align:center;color:#7DD3FC;font-size:13px;margin-bottom:12px;font-weight:600;';
-  hint.innerHTML=lang==='ru'
-    ? '🔗 Введите номер заказа с GGSEL для получения аккаунта'
-    : '🔗 Enter your GGSEL Order Number to receive your account';
-  const form=document.getElementById('state-form');
-  if(form&&form.firstChild) form.insertBefore(hint,form.firstChild);
+  // Case 2: ?uniquecode=UUID or ?orderid=&uniquecode=UUID (from GGSEL "By link")
+  // → show form with ONLY Order ID field + hint message
+  if(uniquecode){
+    // Hide email field - not needed for GGSEL
+    const emailGroup=document.getElementById('inp-email');
+    if(emailGroup && emailGroup.parentElement){
+      emailGroup.parentElement.style.display='none';
+    }
+
+    // Add hint message at top of form
+    const hint=document.createElement('div');
+    hint.style.cssText='text-align:center;color:#7DD3FC;font-size:13px;margin-bottom:16px;font-weight:600;line-height:1.6;';
+    hint.innerHTML=lang==='ru'
+      ? '🔗 Введите <b>номер заказа</b> с GGSEL для получения аккаунта<br><span style="font-size:11px;color:#94A3B8">(номер заказа указан в email от GGSEL)</span>'
+      : '🔗 Enter your <b>Order Number</b> from GGSEL to get your account<br><span style="font-size:11px;color:#94A3B8">(check your GGSEL purchase email for the order number)</span>';
+    const form=document.getElementById('state-form');
+    if(form&&form.firstChild) form.insertBefore(hint,form.firstChild);
+  }
 })();
 </script>
 </body>
 </html>
+
