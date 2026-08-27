@@ -536,12 +536,15 @@ async function load(){
     badge.textContent=meta.en;
     document.getElementById('verified-label').textContent=S[lang][data.alreadyDelivered?'alreadyDelivered':'verified'];
 
-    // Track order link (GGSEL format with UUID)
+    // Track order link
     const trackUUID = data._ggselUUID || uniquecode || '';
+    const GGSEL_PRODUCT_URLS = { '7d': 'https://ggsel.net/catalog/product/5450773', '1m': 'https://ggsel.net/catalog/product/5065211' };
     if(trackUUID){
       document.getElementById('order-link').href = `https://payment.ggsel.com/en/order/${trackUUID}`;
-      document.getElementById('order-link-box').style.display = 'block';
+    } else {
+      document.getElementById('order-link').href = GGSEL_PRODUCT_URLS[pt] || GGSEL_PRODUCT_URLS['1m'];
     }
+    document.getElementById('order-link-box').style.display = 'block';
     show('state-result');
     if(!data.alreadyDelivered)launchConfetti();
   }catch(e){
