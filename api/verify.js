@@ -32,7 +32,7 @@ function cleanPending() {
   }
 }
 
-function alreadyDeliveredResponse(res, order) {
+function alreadyDeliveredResponse(res, order, ggselUUID) {
   return res.status(200).json({
     success: true,
     alreadyDelivered: true,
@@ -43,6 +43,7 @@ function alreadyDeliveredResponse(res, order) {
       soldAt:      order.soldAt,
       productType: order.productType,
       productName: order.productName,
+      ggselUUID:   ggselUUID || '',
     },
   });
 }
@@ -100,7 +101,7 @@ module.exports = async (req, res) => {
           existing.productName = actual.productName;
         }
       } catch (_) { /* keep stored data if API fails */ }
-      return alreadyDeliveredResponse(res, existing);
+      return alreadyDeliveredResponse(res, existing, ggselUUID);
     }
 
     /* ── 2. Verify via GGSEL API ─────────────────────────────────── */
@@ -159,6 +160,8 @@ module.exports = async (req, res) => {
     }
 
     /* ── 5. Deliver ──────────────────────────────────────────────── */
+    // Use UUID from query param or from GGSEL API response
+    const resolvedUUID = ggselUUID || orderInfo.uniqueCode || '';
     await deleteAccountRow(sheetName, account.rowIndex);
     await saveOrder({
       uniqueCode:      orderKey,
@@ -168,7 +171,7 @@ module.exports = async (req, res) => {
       orderId:         orderId,
       productType,
       productName,
-      ggselUUID,
+      ggselUUID:       resolvedUUID,
     });
 
     console.log(`[ggsel] Delivered ${productName} for order ${orderId}`);
@@ -183,6 +186,7 @@ module.exports = async (req, res) => {
         soldAt:      new Date().toISOString(),
         productType,
         productName,
+        ggselUUID:   resolvedUUID,
       },
     });
 
