@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>CapCut Delivery – GGSEL</title>
 <meta name="description" content="Receive your CapCut Pro account after payment on GGSEL.net"/>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23E040FB'/%3E%3Cstop offset='100%25' stop-color='%237B5EF8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ctext x='32' y='45' text-anchor='middle' font-family='Arial,sans-serif' font-weight='900' font-size='32' fill='%23fff'%3ECC%3C/text%3E%3C/svg%3E"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -259,7 +260,7 @@ function submitForm(){
   const uniquecode=(params.get('uniquecode')||'').trim();
 
   // Case 1: ?orderid=43522210 (numeric) → auto-redirect to delivery
-  if(orderid && /^\d+$/.test(orderid)){
+  if(orderid && /^[\da-f\-]{4,}$/i.test(orderid)){
     const email=params.get('email')||'';
     let url=`/delivery.html?orderid=${encodeURIComponent(orderid)}`;
     if(email) url+=`&email=${encodeURIComponent(email)}`;

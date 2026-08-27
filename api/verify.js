@@ -54,6 +54,7 @@ module.exports = async (req, res) => {
 
   const orderId    = (req.query.orderid || '').trim();
   const emailParam = (req.query.email   || '').trim().toLowerCase();
+  const ggselUUID  = (req.query.ggsel_uuid || '').trim();
 
   if (!orderId) {
     return res.status(400).json({ success: false, error: 'Missing Order ID.' });
@@ -167,6 +168,7 @@ module.exports = async (req, res) => {
       orderId:         orderId,
       productType,
       productName,
+      ggselUUID,
     });
 
     console.log(`[ggsel] Delivered ${productName} for order ${orderId}`);

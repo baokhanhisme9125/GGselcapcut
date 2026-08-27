@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>CapCut Delivery – Your Account</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23E040FB'/%3E%3Cstop offset='100%25' stop-color='%237B5EF8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ctext x='32' y='45' text-anchor='middle' font-family='Arial,sans-serif' font-weight='900' font-size='32' fill='%23fff'%3ECC%3C/text%3E%3C/svg%3E"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&subset=latin,cyrillic&display=swap" rel="stylesheet"/>
 
@@ -485,16 +486,35 @@ async function load(){
   if(_loadCalled) return;
   _loadCalled = true;
   const params=new URLSearchParams(window.location.search);
-  const orderId=params.get('orderid');
+  let orderId=params.get('orderid')||'';
+  const uniquecode=params.get('uniquecode')||params.get('unique_code')||'';
   const email=params.get('email')||'';
-  if(!orderId){window.location='/';return;}
+
+  if(!orderId && !uniquecode){window.location='/';return;}
 
   show('state-loading');
   try{
-    let url=`/api/verify?orderid=${encodeURIComponent(orderId)}`;
-    if(email) url+=`&email=${encodeURIComponent(email)}`;
-    const res=await fetch(url);
-    const data=await res.json();
+    let data;
+
+    if(uniquecode && !orderId){
+      // GGSEL "By link" sends UUID → resolve to numeric order ID first
+      const resolveRes=await fetch(`/api/resolve-uuid?uuid=${encodeURIComponent(uniquecode)}`);
+      const resolved=await resolveRes.json();
+      if(resolved.success && resolved.orderId){
+        const verifyRes=await fetch(`/api/verify?orderid=${encodeURIComponent(resolved.orderId)}${email?'&email='+encodeURIComponent(email):''}&ggsel_uuid=${encodeURIComponent(uniquecode)}`);
+        data=await verifyRes.json();
+        if(data.success) data._ggselUUID = uniquecode;
+      } else {
+        const verifyRes=await fetch(`/api/verify?orderid=${encodeURIComponent(uniquecode)}${email?'&email='+encodeURIComponent(email):''}`);
+        data=await verifyRes.json();
+      }
+    } else {
+      let url=`/api/verify?orderid=${encodeURIComponent(orderId)}`;
+      if(email) url+=`&email=${encodeURIComponent(email)}`;
+      const res=await fetch(url);
+      data=await res.json();
+    }
+
     if(!data.success){
       if(data.outOfStock){
         document.getElementById('oos-product').textContent = data.productName || '';
@@ -503,7 +523,7 @@ async function load(){
       document.getElementById('err-msg').textContent=data.error||'Unknown error';
       show('state-error');return;
     }
-    document.getElementById('i-code').textContent=data.order.orderId||orderId;
+    document.getElementById('i-code').textContent=data.order.orderId||orderId||uniquecode;
     document.getElementById('i-email').textContent=data.order.buyerEmail||email||'—';
     document.getElementById('i-date').textContent=formatDate(data.order.soldAt);
     document.getElementById('acc-email').textContent=data.account.email;
@@ -516,9 +536,12 @@ async function load(){
     badge.textContent=meta.en;
     document.getElementById('verified-label').textContent=S[lang][data.alreadyDelivered?'alreadyDelivered':'verified'];
 
-    const GGSEL_PRODUCT_URLS = { '7d': 'https://ggsel.net/catalog/product/5450773', '1m': 'https://ggsel.net/catalog/product/5065211' };
-    document.getElementById('order-link').href = GGSEL_PRODUCT_URLS[pt] || GGSEL_PRODUCT_URLS['1m'];
-    document.getElementById('order-link-box').style.display = 'block';
+    // Track order link (GGSEL format with UUID)
+    const trackUUID = data._ggselUUID || uniquecode || '';
+    if(trackUUID){
+      document.getElementById('order-link').href = `https://payment.ggsel.com/en/order/${trackUUID}`;
+      document.getElementById('order-link-box').style.display = 'block';
+    }
     show('state-result');
     if(!data.alreadyDelivered)launchConfetti();
   }catch(e){
