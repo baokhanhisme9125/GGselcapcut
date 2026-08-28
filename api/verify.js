@@ -89,8 +89,11 @@ module.exports = async (req, res) => {
         });
       }
       // Verify actual product type from GGSEL API and override if stored wrong
+      let resolvedUUID = ggselUUID;
       try {
         const liveInfo = await verifyOrder(orderId);
+        // Get UUID from API response
+        if (!resolvedUUID && liveInfo.uniqueCode) resolvedUUID = liveInfo.uniqueCode;
         const PRODUCTS = {
           '5450773': { productType: '7d', productName: 'CapCut Pro 7 Days (GGSEL)' },
           '5065211': { productType: '1m', productName: 'CapCut Pro 1 Month (GGSEL)' },
@@ -101,7 +104,7 @@ module.exports = async (req, res) => {
           existing.productName = actual.productName;
         }
       } catch (_) { /* keep stored data if API fails */ }
-      return alreadyDeliveredResponse(res, existing, ggselUUID);
+      return alreadyDeliveredResponse(res, existing, resolvedUUID);
     }
 
     /* ── 2. Verify via GGSEL API ─────────────────────────────────── */
