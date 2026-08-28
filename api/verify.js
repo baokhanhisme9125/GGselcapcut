@@ -168,6 +168,7 @@ module.exports = async (req, res) => {
         releaseLock();
         return res.status(503).json({
           success: false, outOfStock: true, productName,
+          ggselUUID: ggselUUID || orderInfo.uniqueCode || '',
           error: 'Out of stock. Contact support. / Товар временно отсутствует.',
         });
       }
