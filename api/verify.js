@@ -21,9 +21,18 @@ const {
   findOrderByCode,
 } = require('../lib/sheets');
 
-/* ── Concurrency guard ──────────────────────────────────────────────── */
+/* ── Concurrency guard ────────────────────────────────────────────────── */
 const _pending = new Map();
 const PENDING_TTL = 30_000;
+
+/* ── Global delivery mutex ── */
+let _deliveryLock = Promise.resolve();
+function acquireDeliveryLock() {
+  let release;
+  const prev = _deliveryLock;
+  _deliveryLock = new Promise(r => { release = r; });
+  return prev.then(() => release);
+}
 
 function cleanPending() {
   const now = Date.now();
@@ -146,52 +155,53 @@ module.exports = async (req, res) => {
 
     const { sheetName, productType, productName } = product;
 
-    const account = await getNextAvailableAccount(sheetName);
-    if (!account) {
-      return res.status(503).json({
-        success: false,
-        outOfStock: true,
-        productName,
-        error: 'Out of stock. Contact support. / Товар временно отсутствует.',
-      });
-    }
+    /* ── ATOMIC: lock → get account → delete → save → release ── */
+    const releaseLock = await acquireDeliveryLock();
+    let account;
+    try {
+      // Re-check idempotency inside lock
+      const raceCheck = await findOrderByCode(orderKey);
+      if (raceCheck) { releaseLock(); return alreadyDeliveredResponse(res, raceCheck); }
 
-    /* ── 4.5. Race-condition guard ────────────────────────────────── */
-    const raceCheck = await findOrderByCode(orderKey);
-    if (raceCheck) {
-      return alreadyDeliveredResponse(res, raceCheck);
-    }
+      account = await getNextAvailableAccount(sheetName);
+      if (!account) {
+        releaseLock();
+        return res.status(503).json({
+          success: false, outOfStock: true, productName,
+          error: 'Out of stock. Contact support. / Товар временно отсутствует.',
+        });
+      }
 
-    /* ── 5. Deliver ──────────────────────────────────────────────── */
-    // Use UUID from query param or from GGSEL API response
-    const resolvedUUID = ggselUUID || orderInfo.uniqueCode || '';
-    await deleteAccountRow(sheetName, account.rowIndex);
-    await saveOrder({
-      uniqueCode:      orderKey,
-      buyerEmail:      orderInfo.buyerEmail,
-      accountEmail:    account.email,
-      accountPassword: account.password,
-      orderId:         orderId,
-      productType,
-      productName,
-      ggselUUID:       resolvedUUID,
-    });
-
-    console.log(`[ggsel] Delivered ${productName} for order ${orderId}`);
-
-    return res.status(200).json({
-      success: true,
-      alreadyDelivered: false,
-      account: { email: account.email, password: account.password },
-      order: {
-        orderId,
-        buyerEmail:  orderInfo.buyerEmail,
-        soldAt:      new Date().toISOString(),
+      const resolvedUUID = ggselUUID || orderInfo.uniqueCode || '';
+      await deleteAccountRow(sheetName, account.rowIndex);
+      await saveOrder({
+        uniqueCode:      orderKey,
+        buyerEmail:      orderInfo.buyerEmail,
+        accountEmail:    account.email,
+        accountPassword: account.password,
+        orderId:         orderId,
         productType,
         productName,
-        ggselUUID:   resolvedUUID,
-      },
-    });
+        ggselUUID:       resolvedUUID,
+      });
+      releaseLock();
+
+      console.log(`[ggsel] Delivered ${productName} for order ${orderId}`);
+
+      return res.status(200).json({
+        success: true,
+        alreadyDelivered: false,
+        account: { email: account.email, password: account.password },
+        order: {
+          orderId,
+          buyerEmail:  orderInfo.buyerEmail,
+          soldAt:      new Date().toISOString(),
+          productType,
+          productName,
+          ggselUUID:   resolvedUUID,
+        },
+      });
+    } catch (lockErr) { releaseLock(); throw lockErr; }
 
   } catch (err) {
     console.error('[ggsel-verify] Error:', err.message);
