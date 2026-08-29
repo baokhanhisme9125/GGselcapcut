@@ -18,6 +18,7 @@ const {
   getNextAvailableAccount,
   deleteAccountRow,
   saveOrder,
+  savePendingOrder,
   findOrderByCode,
 } = require('../lib/sheets');
 
@@ -90,11 +91,16 @@ module.exports = async (req, res) => {
     /* ── 1. Idempotency check ────────────────────────────────────── */
     const existing = await findOrderByCode(orderKey);
     if (existing) {
-      // If email was provided, verify it matches
       if (emailParam && emailParam !== (existing.buyerEmail || '').toLowerCase()) {
-        return res.status(403).json({
-          success: false,
-          error: 'Email does not match. / Email не совпадает.',
+        return res.status(403).json({ success: false, error: 'Email does not match. / Email не совпадает.' });
+      }
+      // If pending (C blank) — seller hasn't filled account yet
+      if (existing.isPending) {
+        return res.status(503).json({
+          success: false, outOfStock: true, isPending: true,
+          productName: existing.productName,
+          ggselUUID: ggselUUID || '',
+          error: 'Out of stock — your order is saved. Please refresh (F5) periodically to receive your account.',
         });
       }
       // Verify actual product type from GGSEL API and override if stored wrong
@@ -161,15 +167,29 @@ module.exports = async (req, res) => {
     try {
       // Re-check idempotency inside lock
       const raceCheck = await findOrderByCode(orderKey);
-      if (raceCheck) { releaseLock(); return alreadyDeliveredResponse(res, raceCheck); }
+      if (raceCheck && !raceCheck.isPending) { releaseLock(); return alreadyDeliveredResponse(res, raceCheck); }
+      if (raceCheck && raceCheck.isPending) {
+        releaseLock();
+        return res.status(503).json({
+          success: false, outOfStock: true, isPending: true, productName: raceCheck.productName,
+          ggselUUID: ggselUUID || orderInfo.uniqueCode || '',
+          error: 'Out of stock — your order is saved. Please refresh (F5) periodically.',
+        });
+      }
 
       account = await getNextAvailableAccount(sheetName);
       if (!account) {
+        const resolvedUUID = ggselUUID || orderInfo.uniqueCode || '';
+        await savePendingOrder({
+          uniqueCode: orderKey, buyerEmail: orderInfo.buyerEmail,
+          orderId, productType, productName, ggselUUID: resolvedUUID,
+        });
         releaseLock();
+        console.log(`[ggsel] OOS — saved pending order for ${orderId}`);
         return res.status(503).json({
-          success: false, outOfStock: true, productName,
-          ggselUUID: ggselUUID || orderInfo.uniqueCode || '',
-          error: 'Out of stock. Contact support. / Товар временно отсутствует.',
+          success: false, outOfStock: true, isPending: true, productName,
+          ggselUUID: resolvedUUID,
+          error: 'Out of stock — your order is saved. Please refresh (F5) periodically to receive your account.',
         });
       }
 
