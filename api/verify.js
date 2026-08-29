@@ -20,6 +20,7 @@ const {
   saveOrder,
   savePendingOrder,
   findOrderByCode,
+  findRecentOrderByEmail,
 } = require('../lib/sheets');
 
 /* ── Concurrency guard ────────────────────────────────────────────────── */
@@ -143,6 +144,24 @@ module.exports = async (req, res) => {
         success: false,
         error: 'Email does not match purchase email. / Email не совпадает.',
       });
+    }
+
+    // Cross-platform dedup: same buyer email within 10 min?
+    const dedupEmail = emailParam || (orderInfo.buyerEmail || '').toLowerCase();
+    if (dedupEmail && dedupEmail !== 'unknown') {
+      const recentByEmail = await findRecentOrderByEmail(dedupEmail);
+      if (recentByEmail && !recentByEmail.isPending) {
+        console.log(`[ggsel-verify] Cross-platform dedup: email=${dedupEmail} already delivered via ${recentByEmail.uniqueCode}`);
+        return alreadyDeliveredResponse(res, recentByEmail, ggselUUID);
+      }
+      if (recentByEmail && recentByEmail.isPending) {
+        return res.status(503).json({
+          success: false, outOfStock: true, isPending: true,
+          productName: recentByEmail.productName, orderId: recentByEmail.orderId || null,
+          ggselUUID: ggselUUID || '',
+          error: 'Out of stock — your order is saved. Please refresh (F5) periodically.',
+        });
+      }
     }
 
     /* ── 4. Detect product & get account from stock ────────────────── */
