@@ -20,7 +20,6 @@ const {
   saveOrder,
   savePendingOrder,
   findOrderByCode,
-  findRecentOrderByEmail,
 } = require('../lib/sheets');
 
 /* ── Concurrency guard ────────────────────────────────────────────────── */
@@ -72,58 +71,8 @@ module.exports = async (req, res) => {
     return res.status(400).json({ success: false, error: 'Missing Order ID.' });
   }
 
-  // Key for Orders sheet: prefix with "ggsel-" to avoid collision with Plati codes
-  const orderKey = `ggsel-${orderId}`;
-
   try {
-    /* ── 0. Concurrency guard ────────────────────────────────────── */
-    cleanPending();
-    if (_pending.has(orderKey)) {
-      await new Promise(r => setTimeout(r, 3000));
-      const existing = await findOrderByCode(orderKey);
-      if (existing) return alreadyDeliveredResponse(res, existing);
-      return res.status(429).json({
-        success: false,
-        error: 'Order is being processed. Please wait and refresh.',
-      });
-    }
-    _pending.set(orderKey, Date.now());
-
-    /* ── 1. Idempotency check ────────────────────────────────────── */
-    const existing = await findOrderByCode(orderKey);
-    if (existing) {
-      if (emailParam && emailParam !== (existing.buyerEmail || '').toLowerCase()) {
-        return res.status(403).json({ success: false, error: 'Email does not match. / Email не совпадает.' });
-      }
-      // If pending (C blank) — seller hasn't filled account yet
-      if (existing.isPending) {
-        return res.status(503).json({
-          success: false, outOfStock: true, isPending: true,
-          productName: existing.productName,
-          ggselUUID: ggselUUID || '',
-          error: 'Out of stock — your order is saved. Please refresh (F5) periodically to receive your account.',
-        });
-      }
-      // Verify actual product type from GGSEL API and override if stored wrong
-      let resolvedUUID = ggselUUID;
-      try {
-        const liveInfo = await verifyOrder(orderId);
-        // Get UUID from API response
-        if (!resolvedUUID && liveInfo.uniqueCode) resolvedUUID = liveInfo.uniqueCode;
-        const PRODUCTS = {
-          '5450773': { productType: '7d', productName: 'CapCut Pro 7 Days (GGSEL)' },
-          '5065211': { productType: '1m', productName: 'CapCut Pro 1 Month (GGSEL)' },
-        };
-        const actual = PRODUCTS[liveInfo.productId];
-        if (actual && actual.productType !== existing.productType) {
-          existing.productType = actual.productType;
-          existing.productName = actual.productName;
-        }
-      } catch (_) { /* keep stored data if API fails */ }
-      return alreadyDeliveredResponse(res, existing, resolvedUUID);
-    }
-
-    /* ── 2. Verify via GGSEL API ─────────────────────────────────── */
+    /* ── 1. Verify via GGSEL API first to resolve uniqueCode ── */
     let orderInfo;
     try {
       orderInfo = await verifyOrder(orderId);
@@ -138,7 +87,41 @@ module.exports = async (req, res) => {
       });
     }
 
-    /* ── 3. Email match (only if email was provided) ─────────────── */
+    const uniqueCode = ggselUUID || orderInfo.uniqueCode || '';
+    const orderKey = uniqueCode || `ggsel-${orderId}`;
+
+    /* ── 2. Concurrency guard ────────────────────────────────────── */
+    cleanPending();
+    if (_pending.has(orderKey)) {
+      await new Promise(r => setTimeout(r, 3000));
+      const existing = await findOrderByCode(orderKey);
+      if (existing) return alreadyDeliveredResponse(res, existing, uniqueCode);
+      return res.status(429).json({
+        success: false,
+        error: 'Order is being processed. Please wait and refresh.',
+      });
+    }
+    _pending.set(orderKey, Date.now());
+
+    /* ── 3. Idempotency check ────────────────────────────────────── */
+    const existing = await findOrderByCode(orderKey);
+    if (existing) {
+      if (emailParam && emailParam !== (existing.buyerEmail || '').toLowerCase()) {
+        return res.status(403).json({ success: false, error: 'Email does not match. / Email не совпадает.' });
+      }
+      // If pending (C blank) — seller hasn't filled account yet
+      if (existing.isPending) {
+        return res.status(503).json({
+          success: false, outOfStock: true, isPending: true,
+          productName: existing.productName,
+          ggselUUID: uniqueCode,
+          error: 'Out of stock — your order is saved. Please refresh (F5) periodically to receive your account.',
+        });
+      }
+      return alreadyDeliveredResponse(res, existing, uniqueCode);
+    }
+
+    /* ── 4. Email match (only if email was provided) ─────────────── */
     if (emailParam && orderInfo.buyerEmail && orderInfo.buyerEmail !== emailParam) {
       return res.status(403).json({
         success: false,
@@ -146,25 +129,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Cross-platform dedup: same buyer email within 10 min?
-    const dedupEmail = emailParam || (orderInfo.buyerEmail || '').toLowerCase();
-    if (dedupEmail && dedupEmail !== 'unknown') {
-      const recentByEmail = await findRecentOrderByEmail(dedupEmail);
-      if (recentByEmail && !recentByEmail.isPending) {
-        console.log(`[ggsel-verify] Cross-platform dedup: email=${dedupEmail} already delivered via ${recentByEmail.uniqueCode}`);
-        return alreadyDeliveredResponse(res, recentByEmail, ggselUUID);
-      }
-      if (recentByEmail && recentByEmail.isPending) {
-        return res.status(503).json({
-          success: false, outOfStock: true, isPending: true,
-          productName: recentByEmail.productName, orderId: recentByEmail.orderId || null,
-          ggselUUID: ggselUUID || '',
-          error: 'Out of stock — your order is saved. Please refresh (F5) periodically.',
-        });
-      }
-    }
-
-    /* ── 4. Detect product & get account from stock ────────────────── */
+    /* ── 5. Detect product & get account from stock ────────────────── */
     const PRODUCTS = {
       '5450773': { sheetName: 'CapCut Pro 7 Ngày',  productType: '7d', productName: 'CapCut Pro 7 Days (GGSEL)' },
       '5065211': { sheetName: 'CapCut Pro 1 Tháng', productType: '1m', productName: 'CapCut Pro 1 Month (GGSEL)' },
@@ -186,33 +151,31 @@ module.exports = async (req, res) => {
     try {
       // Re-check idempotency inside lock
       const raceCheck = await findOrderByCode(orderKey);
-      if (raceCheck && !raceCheck.isPending) { releaseLock(); return alreadyDeliveredResponse(res, raceCheck); }
+      if (raceCheck && !raceCheck.isPending) { releaseLock(); return alreadyDeliveredResponse(res, raceCheck, uniqueCode); }
       if (raceCheck && raceCheck.isPending) {
         releaseLock();
         return res.status(503).json({
           success: false, outOfStock: true, isPending: true, productName: raceCheck.productName,
-          ggselUUID: ggselUUID || orderInfo.uniqueCode || '',
+          ggselUUID: uniqueCode,
           error: 'Out of stock — your order is saved. Please refresh (F5) periodically.',
         });
       }
 
       account = await getNextAvailableAccount(sheetName);
       if (!account) {
-        const resolvedUUID = ggselUUID || orderInfo.uniqueCode || '';
         await savePendingOrder({
           uniqueCode: orderKey, buyerEmail: orderInfo.buyerEmail,
-          orderId, productType, productName, ggselUUID: resolvedUUID,
+          orderId, productType, productName, ggselUUID: uniqueCode,
         });
         releaseLock();
         console.log(`[ggsel] OOS — saved pending order for ${orderId}`);
         return res.status(503).json({
           success: false, outOfStock: true, isPending: true, productName,
-          ggselUUID: resolvedUUID,
+          ggselUUID: uniqueCode,
           error: 'Out of stock — your order is saved. Please refresh (F5) periodically to receive your account.',
         });
       }
 
-      const resolvedUUID = ggselUUID || orderInfo.uniqueCode || '';
       await deleteAccountRow(sheetName, account.rowIndex);
       await saveOrder({
         uniqueCode:      orderKey,
@@ -222,7 +185,7 @@ module.exports = async (req, res) => {
         orderId:         orderId,
         productType,
         productName,
-        ggselUUID:       resolvedUUID,
+        ggselUUID:       uniqueCode,
       });
       releaseLock();
 
@@ -238,7 +201,7 @@ module.exports = async (req, res) => {
           soldAt:      new Date().toISOString(),
           productType,
           productName,
-          ggselUUID:   resolvedUUID,
+          ggselUUID:   uniqueCode,
         },
       });
     } catch (lockErr) { releaseLock(); throw lockErr; }
