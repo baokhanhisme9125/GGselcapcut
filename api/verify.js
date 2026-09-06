@@ -6,12 +6,13 @@
  * - If orderid only   → auto-deliver (for GGSEL "By link" flow)
  *
  * Steps:
- * 1. Check Orders sheet (idempotency)
- * 2. Verify via GGSEL API (purchase/info/{invoice_id})
+ * 1. Verify via GGSEL API
+ * 2. Check Orders sheet (idempotency)
  * 3. Match buyer email (if provided)
  * 4. Detect product (7d / 1m) by item_id
- * 5. Deliver account from correct sheet
- * 6. Save to Orders sheet
+ * 5. Claim account atomically (CLAIMED: marker)
+ * 6. Double-check Orders before saving (cross-instance race guard)
+ * 7. Post-save duplicate detection & cleanup
  */
 const { verifyOrder } = require('../lib/ggsel');
 const {
@@ -20,27 +21,9 @@ const {
   saveOrder,
   savePendingOrder,
   findOrderByCode,
+  findAllOrdersByCode,
+  deleteOrderRow,
 } = require('../lib/sheets');
-
-/* ── Concurrency guard ────────────────────────────────────────────────── */
-const _pending = new Map();
-const PENDING_TTL = 30_000;
-
-/* ── Global delivery mutex ── */
-let _deliveryLock = Promise.resolve();
-function acquireDeliveryLock() {
-  let release;
-  const prev = _deliveryLock;
-  _deliveryLock = new Promise(r => { release = r; });
-  return prev.then(() => release);
-}
-
-function cleanPending() {
-  const now = Date.now();
-  for (const [k, t] of _pending) {
-    if (now - t > PENDING_TTL) _pending.delete(k);
-  }
-}
 
 function alreadyDeliveredResponse(res, order, ggselUUID) {
   return res.status(200).json({
@@ -72,7 +55,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    /* ── 1. Verify via GGSEL API first to resolve uniqueCode ── */
+    /* ── 1. Verify via GGSEL API ─────────────────────────────────── */
     let orderInfo;
     try {
       orderInfo = await verifyOrder(orderId);
@@ -90,48 +73,23 @@ module.exports = async (req, res) => {
     const uniqueCode = ggselUUID || orderInfo.uniqueCode || '';
     const orderKey = uniqueCode || `ggsel-${orderId}`;
 
-    /* ── 2. Concurrency guard ────────────────────────────────────── */
-    cleanPending();
-    if (_pending.has(orderKey)) {
-      await new Promise(r => setTimeout(r, 3000));
-      const existing = await findOrderByCode(orderKey);
-      if (existing) {
-        if (existing.isPending) {
-          return res.status(503).json({
-            success: false, outOfStock: true, isPending: true,
-            productName: existing.productName,
-            ggselUUID: uniqueCode,
-            error: 'Out of stock — your order is saved. Please refresh (F5) periodically to receive your account.',
-          });
-        }
-        return alreadyDeliveredResponse(res, existing, uniqueCode);
-      }
-      return res.status(429).json({
-        success: false,
-        error: 'Order is being processed. Please wait and refresh.',
-      });
-    }
-    _pending.set(orderKey, Date.now());
-
-    /* ── 3. Idempotency check ────────────────────────────────────── */
+    /* ── 2. Idempotency check ────────────────────────────────────── */
     const existing = await findOrderByCode(orderKey);
     if (existing) {
       if (emailParam && emailParam !== (existing.buyerEmail || '').toLowerCase()) {
         return res.status(403).json({ success: false, error: 'Email does not match. / Email не совпадает.' });
       }
-      // If pending (C blank) — seller hasn't filled account yet
       if (existing.isPending) {
         return res.status(503).json({
           success: false, outOfStock: true, isPending: true,
-          productName: existing.productName,
-          ggselUUID: uniqueCode,
+          productName: existing.productName, ggselUUID: uniqueCode,
           error: 'Out of stock — your order is saved. Please refresh (F5) periodically to receive your account.',
         });
       }
       return alreadyDeliveredResponse(res, existing, uniqueCode);
     }
 
-    /* ── 4. Email match (only if email was provided) ─────────────── */
+    /* ── 3. Email match ──────────────────────────────────────────── */
     if (emailParam && orderInfo.buyerEmail && orderInfo.buyerEmail !== emailParam) {
       return res.status(403).json({
         success: false,
@@ -139,7 +97,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    /* ── 5. Detect product & get account from stock ────────────────── */
+    /* ── 4. Detect product ───────────────────────────────────────── */
     const PRODUCTS = {
       '5450773': { sheetName: 'CapCut Pro 7 Ngày',  productType: '7d', productName: 'CapCut Pro 7 Days (GGSEL)' },
       '5065211': { sheetName: 'CapCut Pro 1 Tháng', productType: '1m', productName: 'CapCut Pro 1 Month (GGSEL)' },
@@ -147,7 +105,6 @@ module.exports = async (req, res) => {
 
     console.log(`[ggsel] Order ${orderId} → productId: "${orderInfo.productId}"`);
 
-    // Detect by product ID, default to 1m
     let product = PRODUCTS[orderInfo.productId];
     if (!product) {
       product = PRODUCTS['5065211']; // default 1m
@@ -155,71 +112,102 @@ module.exports = async (req, res) => {
 
     const { sheetName, productType, productName } = product;
 
-    /* ── ATOMIC: lock → get account → delete → save → release ── */
-    const releaseLock = await acquireDeliveryLock();
-    let account;
-    try {
-      // Re-check idempotency inside lock
-      const raceCheck = await findOrderByCode(orderKey);
-      if (raceCheck && !raceCheck.isPending) { releaseLock(); return alreadyDeliveredResponse(res, raceCheck, uniqueCode); }
-      if (raceCheck && raceCheck.isPending) {
-        releaseLock();
+    /* ── 5. Claim account atomically via CLAIMED: marker ─────────── */
+    const account = await getNextAvailableAccount(sheetName, orderKey);
+    if (!account) {
+      // Check if pending already saved by another instance
+      const pendingCheck = await findOrderByCode(orderKey);
+      if (pendingCheck) {
         return res.status(503).json({
-          success: false, outOfStock: true, isPending: true, productName: raceCheck.productName,
-          ggselUUID: uniqueCode,
+          success: false, outOfStock: true, isPending: true,
+          productName: pendingCheck.productName, ggselUUID: uniqueCode,
           error: 'Out of stock — your order is saved. Please refresh (F5) periodically.',
         });
       }
+      await savePendingOrder({
+        uniqueCode: orderKey, buyerEmail: orderInfo.buyerEmail,
+        orderId, productType, productName, ggselUUID: uniqueCode,
+      });
+      console.log(`[ggsel] OOS — saved pending order for ${orderId}`);
+      return res.status(503).json({
+        success: false, outOfStock: true, isPending: true, productName,
+        ggselUUID: uniqueCode,
+        error: 'Out of stock — your order is saved. Please refresh (F5) periodically to receive your account.',
+      });
+    }
 
-      account = await getNextAvailableAccount(sheetName);
-      if (!account) {
-        await savePendingOrder({
-          uniqueCode: orderKey, buyerEmail: orderInfo.buyerEmail,
-          orderId, productType, productName, ggselUUID: uniqueCode,
-        });
-        releaseLock();
-        console.log(`[ggsel] OOS — saved pending order for ${orderId}`);
-        return res.status(503).json({
-          success: false, outOfStock: true, isPending: true, productName,
-          ggselUUID: uniqueCode,
-          error: 'Out of stock — your order is saved. Please refresh (F5) periodically to receive your account.',
-        });
+    /* ── 6. Double-check Orders BEFORE saving (cross-instance race) ── */
+    const raceCheck = await findOrderByCode(orderKey);
+    if (raceCheck && !raceCheck.isPending) {
+      console.warn(`[ggsel] Race detected for orderKey=${orderKey} — releasing claimed account`);
+      try {
+        await revertClaimedRow(sheetName, account.rowIndex, account.email, account.password);
+      } catch (e) { console.warn('[ggsel] Could not revert claimed row:', e.message); }
+      return alreadyDeliveredResponse(res, raceCheck, uniqueCode);
+    }
+
+    /* ── 7. Delete claimed row + save order ──────────────────────── */
+    const claimMark = `CLAIMED:${orderKey}`;
+    await deleteAccountRow(sheetName, account.rowIndex, claimMark);
+    await saveOrder({
+      uniqueCode:      orderKey,
+      buyerEmail:      orderInfo.buyerEmail,
+      accountEmail:    account.email,
+      accountPassword: account.password,
+      orderId:         orderId,
+      productType,
+      productName,
+      ggselUUID:       uniqueCode,
+    });
+
+    /* ── 8. Post-save duplicate detection ────────────────────────── */
+    try {
+      const allOrders = await findAllOrdersByCode(orderKey);
+      if (allOrders.length > 1) {
+        console.warn(`[ggsel] DUPLICATE DETECTED: ${allOrders.length} orders for key=${orderKey}. Cleaning...`);
+        for (let i = 1; i < allOrders.length; i++) {
+          await deleteOrderRow(allOrders[i].rowIndex);
+        }
       }
+    } catch (e) { console.warn('[ggsel] Post-save duplicate check error:', e.message); }
 
-      await deleteAccountRow(sheetName, account.rowIndex);
-      await saveOrder({
-        uniqueCode:      orderKey,
-        buyerEmail:      orderInfo.buyerEmail,
-        accountEmail:    account.email,
-        accountPassword: account.password,
-        orderId:         orderId,
+    console.log(`[ggsel] Delivered ${productName} for order ${orderId}`);
+
+    return res.status(200).json({
+      success: true,
+      alreadyDelivered: false,
+      account: { email: account.email, password: account.password },
+      order: {
+        orderId,
+        buyerEmail:  orderInfo.buyerEmail,
+        soldAt:      new Date().toISOString(),
         productType,
         productName,
-        ggselUUID:       uniqueCode,
-      });
-      releaseLock();
-
-      console.log(`[ggsel] Delivered ${productName} for order ${orderId}`);
-
-      return res.status(200).json({
-        success: true,
-        alreadyDelivered: false,
-        account: { email: account.email, password: account.password },
-        order: {
-          orderId,
-          buyerEmail:  orderInfo.buyerEmail,
-          soldAt:      new Date().toISOString(),
-          productType,
-          productName,
-          ggselUUID:   uniqueCode,
-        },
-      });
-    } catch (lockErr) { releaseLock(); throw lockErr; }
+        ggselUUID:   uniqueCode,
+      },
+    });
 
   } catch (err) {
     console.error('[ggsel-verify] Error:', err.message);
     return res.status(500).json({ success: false, error: 'Server error. Try again.' });
-  } finally {
-    _pending.delete(orderKey);
   }
 };
+
+/* ── Helper: revert a CLAIMED row back to original account ── */
+async function revertClaimedRow(sheetName, rowIndex, email, password) {
+  const { google } = require('googleapis');
+  let credentials;
+  try { credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT || '{}'); }
+  catch { return; }
+  const auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+  const sheets = google.sheets({ version: 'v4', auth });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
+    range: `'${sheetName}'!A${rowIndex}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [[`${email}:${password}`]] },
+  });
+}
