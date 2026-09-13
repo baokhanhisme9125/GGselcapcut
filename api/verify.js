@@ -86,8 +86,9 @@ module.exports = async (req, res) => {
     }
     const MAX_ORDER_AGE_MS = 7 * 24 * 60 * 60 * 1000;
     const orderDateMs = parseDigiDate(orderInfo.datePay);
-    if (!isNaN(orderDateMs) && Date.now() - orderDateMs > MAX_ORDER_AGE_MS) {
-      return res.status(400).json({ success: false, error: 'This order has expired. Delivery is only available within 7 days of purchase.' });
+    const CUTOFF_DATE_GGSEL = new Date('2026-07-27T00:00:00Z').getTime();
+    if (!isNaN(orderDateMs) && orderDateMs < CUTOFF_DATE_GGSEL) {
+      return res.status(400).json({ success: false, error: 'This order has expired. Delivery is no longer available. / Срок заказа истёк.' });
     }
 
     /* ── 2. Idempotency check ────────────────────────────────────── */
