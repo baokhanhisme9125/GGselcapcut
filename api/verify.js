@@ -73,6 +73,23 @@ module.exports = async (req, res) => {
     const uniqueCode = ggselUUID || orderInfo.uniqueCode || '';
     const orderKey = uniqueCode || `ggsel-${orderId}`;
 
+    /* ── 1b. Block old orders (> 7 days) ─────────────────────────── */
+    function parseDigiDate(str) {
+      if (!str) return NaN;
+      const d1 = new Date(str).getTime();
+      if (!isNaN(d1)) return d1;
+      const m = str.match(/^(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/);
+      if (m) return new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:${m[6]}Z`).getTime();
+      const m2 = str.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+      if (m2) return new Date(`${m2[3]}-${m2[2]}-${m2[1]}T00:00:00Z`).getTime();
+      return NaN;
+    }
+    const MAX_ORDER_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+    const orderDateMs = parseDigiDate(orderInfo.datePay);
+    if (!isNaN(orderDateMs) && Date.now() - orderDateMs > MAX_ORDER_AGE_MS) {
+      return res.status(400).json({ success: false, error: 'This order has expired. Delivery is only available within 7 days of purchase.' });
+    }
+
     /* ── 2. Idempotency check ────────────────────────────────────── */
     const existing = await findOrderByCode(orderKey);
     if (existing) {
