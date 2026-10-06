@@ -14,7 +14,7 @@
  * 6. Double-check Orders before saving (cross-instance race guard)
  * 7. Post-save duplicate detection & cleanup
  */
-const { verifyOrder } = require('../lib/ggsel');
+const { verifyOrder, getToken } = require('../lib/ggsel');
 const {
   getNextAvailableAccount,
   deleteAccountRow,
@@ -69,6 +69,35 @@ module.exports = async (req, res) => {
         error: 'Order not paid. / Заказ не оплачен.',
       });
     }
+
+    /* ── SECURITY: prove ownership ──────────────────────────────────────
+     * GGSEL order IDs are sequential numbers → anyone could iterate them.
+     * Never deliver on orderid alone: require the GGSEL unique code (UUID)
+     * that maps to this order, OR the buyer's purchase email.
+     */
+    let ownershipOk = false;
+    if (ggselUUID) {
+      try {
+        const token = await getToken();
+        const fetchFn = require('node-fetch');
+        const r = await fetchFn(`https://seller.ggsel.com/api_sellers/api/purchases/unique-code/${encodeURIComponent(ggselUUID)}?token=${token}`, {
+          headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+        });
+        const d = await r.json();
+        ownershipOk = !!(d && d.retval === 0 && String(d.inv) === String(orderId));
+      } catch (e) { console.warn('[security] UUID ownership check failed:', e.message); }
+    }
+    if (!ownershipOk && emailParam && orderInfo.buyerEmail && emailParam === orderInfo.buyerEmail.toLowerCase()) {
+      ownershipOk = true;
+    }
+    if (!ownershipOk) {
+      console.warn(`[security] BLOCKED orderid=${orderId} (no valid uuid/email) ip=${req.headers['x-forwarded-for'] || ''}`);
+      return res.status(403).json({
+        success: false,
+        error: 'Please enter the email used for purchase. / Укажите email, использованный при покупке.',
+      });
+    }
+
 
     const uniqueCode = ggselUUID || orderInfo.uniqueCode || '';
     const orderKey = uniqueCode || `ggsel-${orderId}`;
